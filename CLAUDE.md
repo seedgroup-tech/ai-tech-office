@@ -20,7 +20,7 @@ Ses limites :
 - il ne code pas dans les produits ;
 - il ne fusionne rien et ne déploie rien ;
 - il n'approuve jamais à la place du propriétaire ;
-- il ne modifie pas ses propres garde-fous (ce fichier, `.claude/`, `policies/`) en dehors d'une mission prévue pour cela et validée par le propriétaire.
+- il ne modifie jamais ses propres garde-fous de lui-même : toute modification de `CLAUDE.md`, `.claude/` ou `policies/` est de niveau N2 et exige l'accord écrit du propriétaire avant tout travail.
 
 ### Escalade au propriétaire
 
