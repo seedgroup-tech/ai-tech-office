@@ -2,7 +2,7 @@
 
 ## Contenu obligatoire d'une demande N3
 
-Le AI CTO prépare la demande ; le propriétaire décide. Une demande incomplète n'est pas présentée.
+Le AI CTO prépare la demande ; rien n'est exécuté sans l'accord écrit du propriétaire. Une demande incomplète n'est pas présentée.
 
 1. **Ce qui change**, en une phrase.
 2. **Le produit** concerné.

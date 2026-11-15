@@ -24,7 +24,7 @@ Read, Grep, Glob, Edit, Write, Bash. Identiques au Lead Developer, sur des branc
 
 ## Limites
 - Aucune nouvelle fonctionnalité.
-- Montées de version majeures validées par le Software Architect.
+- Montées de version majeures : avis de l'Architecte, puis accord écrit du propriétaire (N2).
 - Mêmes interdits que le Lead Developer : jamais sur `main`, pas de fusion, pas de déploiement, pas de secret.
 
 ## Interactions

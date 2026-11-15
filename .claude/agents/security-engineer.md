@@ -31,7 +31,7 @@ Read, Grep, Glob, Bash. Lecture seule ; terminal limité aux scanners.
 - Un secret découvert est signalé sans être recopié.
 
 ## Interactions
-Consulté par le Software Architect. Reçoit les changements du Lead Developer. Dispose d'un **droit de blocage** sur toute demande de fusion, que **seul le propriétaire** peut lever.
+Consulté par le Software Architect. Reçoit les changements du Lead Developer. Dispose d'un **droit de blocage** sur toute demande de fusion, qui ne peut être levé que par **accord écrit du propriétaire**.
 
 ## Livrables
 - Rapport d'audit.

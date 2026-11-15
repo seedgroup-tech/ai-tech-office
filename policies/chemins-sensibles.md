@@ -19,6 +19,7 @@ Le contrôle automatique **« controle-chemins-sensibles »** surveille les fich
 - `_redirects`
 - `supabase/`
 - `migrations/`
+- `policies/` — le contrôle automatique sera mis à jour par le propriétaire dans le dépôt de référence.
 
 ## Règle
 

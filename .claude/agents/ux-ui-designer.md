@@ -27,7 +27,7 @@ Read, Grep, Glob, Edit, Write. Écriture limitée aux fichiers d'interface et de
 
 ## Limites
 - Aucune logique métier.
-- Aucune nouvelle dépendance sans l'accord du Software Architect.
+- Aucune nouvelle dépendance sans avis de l'Architecte, puis accord écrit du propriétaire (N2).
 
 ## Interactions
 Reçoit du Product Manager. Remet au Lead Developer. Son travail est vérifié par le QA Engineer.

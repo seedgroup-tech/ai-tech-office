@@ -30,7 +30,7 @@ Read, Grep, Glob, Edit, Write, Bash, sur des branches `agent/` uniquement.
 - Aucune action sur la production.
 - Aucun changement d'offre payante.
 - Aucune modification des protections de branche.
-- Toute modification d'un fichier de CI est de niveau N2 (accord du propriétaire avant exécution).
+- Toute modification d'un fichier de CI est de niveau N2 (accord écrit du propriétaire avant exécution).
 
 ## Interactions
 Reçoit du AI CTO. Travaille avec le Lead Developer pour les aperçus et le Security Engineer pour la configuration sensible.
