@@ -4,7 +4,7 @@ Ce guide est pour vous, Yan. Comptez environ 1 heure. Coût : 0 FCFA de plus (of
 
 Sentinel est un petit programme hébergé chez Cloudflare. Toutes les 15 minutes, il regarde si vos sites répondent, si les contrôles automatiques des dépôts sont en échec, si des demandes de fusion traînent et si GitHub signale des failles graves. Il note ce qu'il trouve dans la mémoire du bureau. Quand le problème est grave, il réveille un agent Claude Code. Quand tout va bien, il se tait.
 
-Vous allez créer 4 réglages secrets : `GITHUB_TOKEN_ORG`, `GITHUB_TOKEN_PERSO`, `ROUTINE_ID`, `ROUTINE_TOKEN`.
+Vous allez créer 4 réglages secrets : `GITHUB_TOKEN_ORG`, `GITHUB_TOKEN_PERSO`, `ROUTINE_ID`, `ROUTINE_TOKEN`. Le bureau vous recommande un 5e, facultatif mais plus sûr : `GITHUB_TOKEN_MEMOIRE` (voir l'étape 1).
 
 > **Ce qu'il ne faut jamais faire**
 >
@@ -30,6 +30,13 @@ Si l'un de ces points manque, arrêtez-vous et dites-le au bureau.
 ## Étape 1 — Clé GitHub A (organisation seedgroup-tech)
 
 Cette clé lit les dépôts de l'organisation et écrit dans la mémoire.
+
+> **Choix recommandé par le bureau : deux clés au lieu d'une.** GitHub donne les mêmes droits à une clé sur tous les dépôts qu'elle couvre. Une seule clé A aurait donc aussi le droit d'écrire dans `ai-tech-office` et `site-personnel`, même si Sentinel ne s'en sert pas. Pour l'éviter :
+>
+> - **clé A1** `sentinel-memoire` : seulement le dépôt `ai-tech-office-memoire`, **Contents** en **Read and write**, **Metadata** en **Read-only** → secret `GITHUB_TOKEN_MEMOIRE` ;
+> - **clé A2** `sentinel-org` : seulement `ai-tech-office` et `site-personnel`, en **Read-only** : **Actions**, **Pull requests**, **Dependabot alerts**, **Metadata** ; **aucun** droit sur Contents → secret `GITHUB_TOKEN_ORG`.
+>
+> Faites les points 1 à 9 ci-dessous deux fois, une par clé. Si vous préférez une seule clé A (votre consigne d'origine), suivez les points tels quels et ne créez pas `GITHUB_TOKEN_MEMOIRE` : Sentinel utilisera alors `GITHUB_TOKEN_ORG` pour la mémoire.
 
 1. Sur ordinateur, connectez-vous à GitHub.
 2. Photo en haut à droite, **Settings**, puis tout en bas à gauche **Developer settings**.
@@ -95,14 +102,15 @@ La routine est l'agent qui se réveille quand Sentinel lui signale un problème 
 6. **Pas de déploiement des autres branches** : si Cloudflare propose des aperçus ou des déploiements de branches (**Non-production branch builds**, **Preview**), **désactivez-les**.
 7. Cliquez sur **Save and Deploy**. Le premier déploiement peut se plaindre de secrets manquants ou rester inactif : c'est normal, ils arrivent à l'étape 5.
 
-## Étape 5 — Les 4 secrets dans Cloudflare
+## Étape 5 — Les secrets dans Cloudflare (4, ou 5 avec la clé mémoire séparée)
 
 1. Dans le Worker `ai-tech-office-sentinel` : **Settings** (Paramètres), puis **Variables and Secrets** (Variables et secrets).
 2. Pour chaque ligne : **Add**, type **Secret**, nom exact, valeur, puis **Deploy** ou **Save**.
 
 | Nom (exactement) | Valeur |
 |---|---|
-| `GITHUB_TOKEN_ORG` | la clé A (étape 1) |
+| `GITHUB_TOKEN_ORG` | la clé A (ou A2 si vous avez choisi deux clés), étape 1 |
+| `GITHUB_TOKEN_MEMOIRE` | facultatif : la clé A1, si vous avez choisi deux clés (étape 1) |
 | `GITHUB_TOKEN_PERSO` | la clé B (étape 2) |
 | `ROUTINE_ID` | l'identifiant de la routine (étape 3) |
 | `ROUTINE_TOKEN` | le jeton du déclencheur (étape 3) |
@@ -159,7 +167,7 @@ La veille veut dire : Sentinel continue de surveiller et de noter, mais ne réve
 **Renouvellement.** Les clés A et B expirent au bout de 90 jours.
 
 1. Mettez **dès maintenant** un rappel dans votre agenda, **une semaine avant** la date d'expiration affichée par GitHub.
-2. Ce jour-là : refaites l'étape 1 et l'étape 2 (nouvelles clés), remplacez les secrets `GITHUB_TOKEN_ORG` et `GITHUB_TOKEN_PERSO` dans Cloudflare (étape 5, bouton **Edit**), puis supprimez les anciennes clés dans GitHub.
+2. Ce jour-là : refaites l'étape 1 et l'étape 2 (nouvelles clés), remplacez les secrets `GITHUB_TOKEN_ORG`, `GITHUB_TOKEN_PERSO` (et `GITHUB_TOKEN_MEMOIRE` si vous l'avez créé) dans Cloudflare (étape 5, bouton **Edit**), puis supprimez les anciennes clés dans GitHub.
 3. Si vous oubliez, Sentinel ne peut plus lire GitHub : rien n'est perdu, il suffit de renouveler.
 
 **En cas de fuite** (une clé collée par erreur quelque part, ou vue par quelqu'un) :

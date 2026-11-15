@@ -27,6 +27,7 @@ Contraintes : aucune base de données, aucun framework, aucune dépendance npm ;
 |---|---|
 | `GITHUB_TOKEN_ORG` | clé A : mémoire (lecture et écriture des contenus) + dépôts de l'organisation seedgroup-tech en lecture |
 | `GITHUB_TOKEN_PERSO` | clé B : dépôts du compte seedscaleup (KLOQin, XADIKOA) en lecture seule |
+| `GITHUB_TOKEN_MEMOIRE` | facultatif (décision du AI CTO après la remarque du DevOps : une clé fine-grained a les mêmes droits sur tous ses dépôts) : s'il est présent, seule clé utilisée pour la mémoire ; sinon `GITHUB_TOKEN_ORG` |
 | `ROUTINE_ID` | identifiant de la routine « Sentinel – intervention » ; doit respecter `^[A-Za-z0-9_-]{1,128}$` |
 | `ROUTINE_TOKEN` | jeton du déclencheur API de la routine |
 
@@ -130,3 +131,46 @@ Réponse JSON, `Cache-Control: no-store` : `{ service: "ai-tech-office-sentinel"
 - `lib/reseau.mjs` : seuls `https://api.github.com`, `https://api.anthropic.com` et les hôtes `https://` des sites actifs de `projets.json` ; tout autre hôte lève une erreur avant l'appel. Redirections non suivies.
 - Les clés ne sont jamais journalisées (`console.log` : nombres et messages fixes seulement), jamais écrites dans la mémoire, jamais envoyées ailleurs que dans l'en-tête `Authorization` de leur hôte.
 - Règle C : la mémoire est le seul dépôt où une écriture est possible (dépôt et liste de fichiers figés) ; les dépôts produits ne reçoivent que des GET.
+
+## 11. Relecture du Software Architect
+
+Relue le 15 novembre 2026 (M-008), avant tout code. Confrontée à : `etat/SCHEMA.md`, `etat/projets.json`, `etat/sentinel.json`, `etat/alertes.json` (mémoire), `console/lib/github.mjs`, `console/lib/api.mjs`, `console/public/app.js`.
+
+**Verdict : favorable avec modifications.** Le découpage (fonctions pures, liste d'écriture figée, compteurs écrits avant l'appel) est sain. Compatibilité console vérifiée : `app.js` n'utilise que `niveau`, `titre`, `detail`, `date`, `lien` et masque `statut: "close"` ; les champs en plus sont ignorés (un objet comme `reveil` est neutralisé par `s()`). Aucune modification de la console n'est nécessaire.
+
+### Modifications demandées
+
+1. **409 sur `sentinel.json` : tout recalculer**, pas réappliquer. Relire `sentinel.json` et `alertes.json`, refaire la fusion (§5) et les décisions (§6) sur les versions fraîches : `pause` a pu passer à `true`, un passage en double a pu consommer les compteurs. Second échec ou toute autre erreur : passage abandonné, aucun réveil, aucune autre écriture.
+2. **409 sur `alertes.json` / `journal.json` : appliquer des changements, jamais un fichier entier** (fonction `modifier(listeFraiche)`, comme `modifierAvecReessai` de la console). Ajout des alertes absentes, mise à jour par `id` des seules alertes `source: "sentinel"`, numéro `J-xxx` recalculé sur la version fraîche. Invariant vérifié : au plus une alerte Sentinel ouverte par empreinte.
+3. **Une empreinte est en observation ou ouverte, jamais les deux** : retirer de `en_observation` toute empreinte ayant une alerte ouverte, et toute entrée sans échec depuis plus de 24 h (sinon le seuil de 2 peut être contourné après une écriture partielle).
+4. **Premier passage (`dernier_passage: null`) : aucun réveil.** L'état initial est enregistré avec `reveil: { statut: "non_fait", raison: "premier passage" }`. Sinon le premier cron réveille 2 agents pour une dette déjà connue (A-004 sur XADIKOA).
+5. **Fermer seulement sur preuve positive.** Workflow absent de la page lue : « inconnu », pas « corrigé ». Liste pleine (autant d'éléments que `per_page`) : aucune fermeture de ce type dans ce passage. Dependabot 403/404 : `ok: false`. Ignorer `cancelled` et `skipped` pour trouver la dernière exécution.
+6. **Site derrière une protection Cloudflare** : un 403 avec l'en-tête `cf-mitigated: challenge` est « inconnu », pas un échec. Annuler le corps de chaque réponse de site.
+7. **Limites Cloudflare.** (a) Compteur de sous-requêtes dans `reseau.mjs`, plafond 45 dont 12 réservées aux écritures et réveils ; au-delà, contrôles restants « inconnus » (à 9 projets, on dépasse 50). (b) `actions/runs` avec `per_page=30&exclude_pull_requests=true` : 100 exécutions pèsent plusieurs centaines de Ko à décoder, et l'offre gratuite n'accorde qu'environ 10 ms de CPU par invocation (à confirmer au déploiement ; passer à l'offre payante serait une dépense N3).
+8. **Volume de commits** : `derniere_observation` au plus une fois par 24 h ; un changement du seul `dernier_resultat` ne déclenche pas d'écriture (hors signe de vie horaire) ; messages préfixés « Sentinel : ». Environ 25 commits par jour au lieu d'environ 50.
+9. **Taille des fichiers** : au-delà de 1 Mo, l'API `contents` ne renvoie plus le contenu et la console tombe entièrement (`Promise.all`). Sentinel lit `size` ; au-delà de 700 Ko pour `alertes.json` ou `journal.json` : note unique et signal dans `/sante`. Archiver relève du propriétaire.
+10. **Clé cohérente avec le dépôt** : `perso` seulement pour `seedscaleup/…`, `org` seulement pour `seedgroup-tech/…` ; sinon projet sauté (note).
+11. **`/sante` ne doit pas épuiser le quota GitHub** : cache partagé (`caches.default`, 5 min) et réponse en cache si GitHub échoue, ou protection Cloudflare Access.
+12. **« Au plus 1 réveil par empreinte »** : « 7 jours » assouplit la consigne du propriétaire. À faire valider par écrit (AI CTO) ; d'ici là, lecture stricte : aucune purge de `reveils_par_empreinte` (plafond de sécurité 1 000 entrées), délai gardé en constante.
+13. **Consigne de la routine** (côté Claude Code) : l'agent réveillé n'écrit jamais `etat/sentinel.json` et ne change pas le statut d'une alerte `source: "sentinel"`, sinon il peut défaire l'anti-boucle.
+14. **Dates** ISO avec décalage (`…+01:00`), comme SCHEMA.md ; heure de Douala pour l'horodatage de l'`id`.
+15. **Pour le AI CTO** : compléter `etat/SCHEMA.md` (`projets.json`, `sentinel.json`, champs facultatifs des alertes, Sentinel nouvel écrivain de `alertes.json` et `journal.json`) ; en fin de mission, partir de la version à jour de ces fichiers et ne jamais réécrire une alerte Sentinel.
+
+### Remarques (facultatives)
+
+- a. Ordre des écritures conforme, sans boucle : seules les alertes créées dans le passage sont candidates, compteurs écrits avant l'appel, échec compté. Plafond réel : 4 réveils par passage (1 par projet), le budget du §8 est surestimé sans danger.
+- b. Si l'écriture de `alertes.json` échoue après un réveil, tenter quand même l'entrée de journal (« alerte non enregistrée ») : le texte envoyé suffit à l'agent.
+- c. Panne réseau du Worker : tous les sites échouent ensemble. Option v2 : si tout échoue dans un passage, ne rien compter.
+- d. Dependabot par numéro peut produire des dizaines de cartes (XADIKOA) ; option : une alerte par projet et par gravité.
+- e. `notes` à 50 : refuser les nouvelles plutôt que retirer les anciennes (une note retirée reviendrait et provoquerait un commit à chaque passage).
+- f. En-tête `anthropic-beta` et champ de l'adresse de session à vérifier sur la documentation au déploiement.
+- g. Liste d'hôtes : comparer exactement `new URL(u).hostname` et le protocole, jamais un préfixe de chaîne.
+- h. v2 possible : un seul commit atomique pour les 3 fichiers (API Git Data), plus robuste mais plus complexe.
+
+## 12. Décisions du AI CTO après la relecture
+
+- Les 15 modifications de l'Architecte sont acceptées.
+- Modification 12 : lecture **stricte** de « au plus 1 réveil par empreinte » (aucun délai d'oubli, aucune purge ; plafond de sécurité de 1 000 empreintes). Un assouplissement (par exemple 7 jours) demande l'accord écrit du propriétaire : proposé en fin de mission.
+- Modification 7 : la limite de temps de calcul de l'offre gratuite de Cloudflare est à vérifier au premier déploiement ; un passage à l'offre payante serait une dépense (N3), soumise au propriétaire.
+- Modification 11 : le cache partagé `caches.default` n'agit pas sur une adresse `workers.dev` ; `/sante` utilise un cache en mémoire de l'instance (5 minutes) et la dernière réponse connue si GitHub échoue.
+- Clé mémoire séparée et facultative `GITHUB_TOKEN_MEMOIRE` (section 2), recommandée dans `INSTALLATION.md`.

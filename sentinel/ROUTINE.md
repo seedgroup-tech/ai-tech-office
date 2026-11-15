@@ -47,7 +47,7 @@ En lecture seule d'abord : journaux du workflow, historique récent, avis Depend
 6. METTRE À JOUR LA MÉMOIRE (ai-tech-office-memoire)
 - missions/<M-xxx>.md (compte rendu), missions/MISSIONS.md, TABLEAU-DE-BORD.md.
 - etat/missions.json, etat/agents.json (retour à « disponible », ou « en_attente » si l'agent attend le propriétaire), etat/journal.json (entrée « Intervention Sentinel : … »), etat/demandes.json si une décision du propriétaire est nécessaire.
-- etat/alertes.json : ne modifie aucun champ géré par Sentinel ; tu peux seulement ajouter à l'alerte concernée un champ "intervention" avec le numéro de mission et le lien du compte rendu.
+- etat/alertes.json : ne modifie aucun champ géré par Sentinel, et ne change jamais le statut d'une alerte dont la source est « sentinel » (c'est Sentinel qui la ferme) ; tu peux seulement ajouter à l'alerte concernée un champ "intervention" avec le numéro de mission et le lien du compte rendu.
 - Jamais etat/decisions.json, jamais etat/sentinel.json.
 
 7. INTERDITS ABSOLUS
