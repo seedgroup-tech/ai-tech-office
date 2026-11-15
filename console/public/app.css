@@ -1,6 +1,6 @@
 /* VOICE: poste de commandement d'une direction technique : précis, calme, sans décor inutile
    IDEA: le plateau isométrique du bureau, devenu une carte qu'on lit, qu'on zoome et qu'on interroge
-   PICTURE: l'open space en 3 espaces + direction ; chaque poste reflète un statut réel, rien n'est simulé
+   PICTURE: l'open space sur un plateau flottant (M-007) : 3 espaces + direction ; chaque poste reflète un statut réel, rien n'est simulé
    COLOUR: blanc cassé, anthracite, bleu = en mission, ambre = en attente, rouge = bloqué, vert = terminé
    TYPE/LAYOUT: Inter Tight titres, Inter texte ; 2 vues (Bureau / Pilotage) ; tiroir latéral pour les fiches */
 :root{color-scheme:light dark;--bg:light-dark(#F7F6F2,#15171A);--carte:light-dark(#FFFFFF,#1D2024);--ligne:light-dark(#E3E1DA,#2F3339);--ink:light-dark(#20242A,#E7E5DF);--fort:light-dark(#151719,#F4F2EC);--gris:light-dark(#646973,#A2A8B0);
@@ -27,7 +27,7 @@ section{margin-top:26px}
 .tete h2{font-size:22px;font-weight:800}
 .tete p{margin:0;color:var(--gris);font-size:14px}
 /* scène */
-.scene{position:relative;border:1px solid var(--ligne);border-radius:16px;overflow:hidden;background:#F1EFEA;height:clamp(340px,58vw,640px);touch-action:none}
+.scene{position:relative;border:1px solid var(--ligne);border-radius:16px;overflow:hidden;background:linear-gradient(160deg,#EEF5FB,#D9E9F6);height:clamp(340px,58vw,640px);touch-action:none}
 .scene canvas{position:absolute;inset:0;width:100%;height:100%;cursor:grab}
 .scene canvas.drag{cursor:grabbing}
 .calque{position:absolute;inset:0;pointer-events:none;overflow:hidden}
