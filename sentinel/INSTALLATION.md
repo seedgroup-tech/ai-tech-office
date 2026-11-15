@@ -4,7 +4,7 @@ Ce guide est pour vous, Yan. Comptez environ 1 heure. Coût : 0 FCFA de plus (of
 
 Sentinel est un petit programme hébergé chez Cloudflare. Toutes les 15 minutes, il regarde si vos sites répondent, si les contrôles automatiques des dépôts sont en échec, si des demandes de fusion traînent et si GitHub signale des failles graves. Il note ce qu'il trouve dans la mémoire du bureau. Quand le problème est grave, il réveille un agent Claude Code. Quand tout va bien, il se tait.
 
-Vous allez créer 4 réglages secrets : `GITHUB_TOKEN_ORG`, `GITHUB_TOKEN_PERSO`, `ROUTINE_ID`, `ROUTINE_TOKEN`. Le bureau vous demande un 5e, `GITHUB_TOKEN_MEMOIRE`, pour que la seule clé qui écrit ne touche que la mémoire (voir l'étape 1).
+Vous allez créer 5 réglages secrets : `GITHUB_TOKEN_ORG`, `GITHUB_TOKEN_PERSO`, `ROUTINE_ID`, `ROUTINE_TOKEN`. Plus un 5e, `GITHUB_TOKEN_MEMOIRE`, pour que la seule clé qui écrit ne touche que la mémoire (voir l'étape 1). Sans lui, Sentinel ne fait rien.
 
 > **Ce qu'il ne faut jamais faire**
 >
@@ -29,7 +29,7 @@ Si l'un de ces points manque, arrêtez-vous et dites-le au bureau.
 
 ## Étape 1 — Clés GitHub A1 et A2 (organisation seedgroup-tech)
 
-Le bureau, sur avis du Security Engineer, vous demande **deux clés** pour l'organisation, au lieu d'une seule clé A comme dans votre consigne d'origine. Raison : GitHub donne à une clé les mêmes droits sur tous les dépôts qu'elle couvre. Une clé A unique pourrait donc écrire dans `ai-tech-office`, le dépôt d'où Sentinel se redéploie tout seul : si elle fuyait, quelqu'un pourrait y glisser du code et lire tous les secrets de Sentinel. Avec deux clés, la seule clé qui écrit ne touche que la mémoire. (Le choix entre une ou deux clés vous revient : il figure dans vos décisions à prendre.)
+Vous avez décidé (accord écrit du 15 nov. 2026) de créer **deux clés** pour l'organisation, au lieu d'une seule clé A. Raison : GitHub donne à une clé les mêmes droits sur tous les dépôts qu'elle couvre. Une clé A unique pourrait donc écrire dans `ai-tech-office`, le dépôt d'où Sentinel se redéploie tout seul : si elle fuyait, quelqu'un pourrait y glisser du code et lire tous les secrets de Sentinel. Avec deux clés, la seule clé qui écrit ne touche que la mémoire.
 
 ### 1a — Clé A1 : la mémoire (lecture et écriture)
 
@@ -60,10 +60,6 @@ Le bureau, sur avis du Security Engineer, vous demande **deux clés** pour l'org
 ### Recommandé en plus
 
 Protégez la branche `main` du dépôt `ai-tech-office` (GitHub : dépôt, **Settings**, **Branches** ou **Rules**, règle sur `main` : demande de fusion obligatoire). Ainsi, même une clé volée ne pourrait pas y pousser directement le code que Cloudflare déploie.
-
-### Si vous gardez une seule clé A (déconseillé)
-
-Créez une seule clé `sentinel-org` qui couvre `ai-tech-office-memoire`, `ai-tech-office` et `site-personnel`, avec **Contents** en **Read and write** et, en **Read-only**, **Actions**, **Pull requests**, **Dependabot alerts**, **Metadata**. Ne créez pas `GITHUB_TOKEN_MEMOIRE` : Sentinel utilisera `GITHUB_TOKEN_ORG` pour la mémoire. Le risque décrit plus haut demeure.
 
 ## Étape 2 — Clé GitHub B (compte personnel seedscaleup)
 
@@ -112,15 +108,15 @@ La routine est l'agent qui se réveille quand Sentinel lui signale un problème 
 6. **Pas de déploiement des autres branches** : si Cloudflare propose des aperçus ou des déploiements de branches (**Non-production branch builds**, **Preview**), **désactivez-les**.
 7. Cliquez sur **Save and Deploy**. Le premier déploiement peut se plaindre de secrets manquants ou rester inactif : c'est normal, ils arrivent à l'étape 5.
 
-## Étape 5 — Les 5 secrets dans Cloudflare (4 si vous gardez une clé A unique)
+## Étape 5 — Les 5 secrets dans Cloudflare
 
 1. Dans le Worker `ai-tech-office-sentinel` : **Settings** (Paramètres), puis **Variables and Secrets** (Variables et secrets).
 2. Pour chaque ligne : **Add**, type **Secret**, nom exact, valeur, puis **Deploy** ou **Save**.
 
 | Nom (exactement) | Valeur |
 |---|---|
-| `GITHUB_TOKEN_MEMOIRE` | la clé A1 (étape 1a) ; à ne pas créer seulement si vous gardez une clé A unique |
-| `GITHUB_TOKEN_ORG` | la clé A2 (étape 1b), ou la clé A unique |
+| `GITHUB_TOKEN_MEMOIRE` | la clé A1 (étape 1a) |
+| `GITHUB_TOKEN_ORG` | la clé A2 (étape 1b) |
 | `GITHUB_TOKEN_PERSO` | la clé B (étape 2) |
 | `ROUTINE_ID` | l'identifiant de la routine (étape 3) |
 | `ROUTINE_TOKEN` | le jeton du déclencheur (étape 3) |
@@ -134,25 +130,16 @@ La routine est l'agent qui se réveille quand Sentinel lui signale un problème 
 ### 6.1 La page de santé
 
 1. Ouvrez `https://ai-tech-office-sentinel.<votre-sous-domaine>.workers.dev/sante`. Votre sous-domaine est visible dans Cloudflare, sur la page du Worker.
-2. Vous devez voir une réponse en JSON avec :
-   - `service` : `ai-tech-office-sentinel` ;
-   - `version` ;
-   - `dernier_passage` : vide au début, il se remplit au premier passage, **dans les 15 minutes** ;
-   - `en_veille` : `false` ;
-   - `anomalies_ouvertes` ;
-   - `erreurs_dernier_passage` ;
-   - `fichiers_trop_gros` : `true` si un fichier de la mémoire devient trop gros (dites-le au bureau).
-
-   Si GitHub ne répond pas et que Sentinel n'a encore rien lu, la page affiche seulement `{"statut":"inconnu"}` : réessayez plus tard.
-3. Quand rien ne change, `dernier_passage` est mis à jour **au plus une fois par heure**. Ne vous inquiétez donc pas s'il n'avance pas toutes les 15 minutes.
-4. Cette page ne montre aucun nom de projet, aucune adresse, aucune clé.
-5. Cette page est publique : n'importe qui connaissant l'adresse peut voir si le bureau est en veille et combien d'anomalies sont ouvertes. La protéger (Cloudflare Access) est une proposition soumise à votre décision.
+2. La page affiche seulement :
+   - `{"ok":true}` : Sentinel a fait un passage il y a moins de 2 heures ;
+   - `{"ok":false}` : pas de passage récent, ou la mémoire est illisible. Juste après l'installation, c'est normal pendant les 15 premières minutes ; ensuite, dites-le au bureau.
+3. Par votre décision, cette page ne montre rien d'autre : ni compteur, ni état de veille, ni nom de projet, ni adresse, ni clé. Pour le détail, regardez `etat/sentinel.json` dans la mémoire, ou la console.
 
 ### 6.2 Test de panne simulée
 
 **Attention : ce test déclenche un vrai réveil de la routine et consomme une session de votre abonnement Claude.** Faites-le une seule fois.
 
-0. Attendez que `dernier_passage` soit rempli dans la page de santé (étape 6.1) : **le tout premier passage ne réveille jamais personne**, pour ne pas réveiller les agents sur des problèmes déjà connus.
+0. Attendez que la page de santé affiche `{"ok":true}` (étape 6.1) : **le tout premier passage ne réveille jamais personne**, pour ne pas réveiller les agents sur des problèmes déjà connus.
 1. Sur GitHub, dans le dépôt `ai-tech-office-memoire`, ouvrez `etat/projets.json` et ajoutez ce projet dans la liste (sans oublier la virgule avec l'élément précédent) :
 
    ```
@@ -175,7 +162,7 @@ La veille veut dire : Sentinel continue de surveiller et de noter, mais ne réve
 1. Dans le dépôt `ai-tech-office-memoire`, ouvrez `etat/sentinel.json`.
 2. Passez `"pause"` à `true`. Enregistrez (**Commit changes**).
 3. Pour reprendre : repassez `"pause"` à `false`.
-4. Sentinel ne modifie jamais ce réglage lui-même. `/sante` indique `en_veille`.
+4. Sentinel ne modifie jamais ce réglage lui-même.
 
 ## Étape 8 — Renouveler les clés, et en cas de fuite
 
@@ -203,7 +190,7 @@ La veille veut dire : Sentinel continue de surveiller et de noter, mais ne réve
 | Ce que vous voyez | Que faire |
 |---|---|
 | `/sante` ne répond pas ou donne une erreur | vérifiez que le Worker est déployé, et l'adresse (sous-domaine) |
-| `dernier_passage` reste vide après 30 minutes | vérifiez les 4 secrets (étape 5), puis redéployez ; regardez les journaux du Worker (**Observability**) |
+| `/sante` affiche `{"ok":false}` après 30 minutes | vérifiez les 5 secrets (étape 5), puis redéployez ; regardez les journaux du Worker (**Observability**) |
 | Aucune alerte ni réveil pendant le test | vérifiez que `"pause"` est à `false`, et que le projet de test est `"actif": true` |
 | Alerte sans réveil | la raison est notée sur l'alerte (veille, limite de 6 par jour, déjà réveillé récemment, ou routine non configurée) |
 

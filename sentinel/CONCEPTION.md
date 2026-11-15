@@ -183,3 +183,8 @@ L'offre gratuite donne, par passage programmé, 10 ms de calcul et 50 appels ext
 - **Rotation** : sites à chaque passage (en rotation eux aussi si le budget ne suffit pas, pointeur `rotation_sites`) ; GitHub **un seul projet par passage**, à tour de rôle (pointeur `rotation_github`). Avec 4 projets, chaque dépôt est contrôlé une fois par heure ; une alerte GitHub se ferme après 2 tours corrects de son projet.
 - **Requêtes GitHub minimales** (`per_page=1`, filtre sur la branche principale, champ facultatif `branche` du projet, sinon `main`) : liste des workflows (au plus 5 actifs), dernière exécution terminée de chacun ; plus ancienne demande de fusion ouverte ; première alerte Dependabot critique ou élevée. Au plus 8 appels par projet. Demandes de fusion et Dependabot : une seule anomalie par projet (cibles `anciennes` et `critique-ou-eleve`).
 - **Test du pire cas** : le total réel des appels d'un passage, réserve comprise, ne dépasse jamais 40, même avec 20 projets tous en panne et des conflits sur chaque écriture.
+
+## 14. Décisions écrites du propriétaire après la revue Sécurité (15 nov. 2026)
+
+1. **Deux clés obligatoires** pour l'organisation : A1 `GITHUB_TOKEN_MEMOIRE` (mémoire seulement, Contents en lecture et écriture) et A2 `GITHUB_TOKEN_ORG` (dépôts de l'organisation, lecture seule, sans Contents). Le repli de la mémoire sur `GITHUB_TOKEN_ORG` est supprimé : sans `GITHUB_TOKEN_MEMOIRE`, Sentinel ne fait rien. Ces règles priment sur les sections 2 et 12.
+2. **`/sante` minimal** : la réponse est seulement `{"ok":true}` (passage enregistré il y a moins de 2 heures) ou `{"ok":false}`. Aucun compteur, aucun état de veille, aucune date. Pas de Cloudflare Access pour Sentinel. Cela prime sur la section 9 et la décision D3.

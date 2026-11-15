@@ -6,12 +6,11 @@
 #
 # AUCUNE VALEUR SECRÈTE ICI, jamais. Les secrets sont saisis directement
 # dans Cloudflare (Paramètres, Variables et secrets, type « Secret ») :
-#   - GITHUB_TOKEN_ORG
-#   - GITHUB_TOKEN_PERSO
+#   - GITHUB_TOKEN_MEMOIRE (clé A1 : mémoire seulement)
+#   - GITHUB_TOKEN_ORG (clé A2 : dépôts de l'organisation, lecture seule)
+#   - GITHUB_TOKEN_PERSO (clé B : KLOQin et XADIKOA, lecture seule)
 #   - ROUTINE_ID
 #   - ROUTINE_TOKEN
-# et, facultatif (recommandé : clé réservée à la mémoire) :
-#   - GITHUB_TOKEN_MEMOIRE
 
 name = "ai-tech-office-sentinel"
 main = "src/index.js"
