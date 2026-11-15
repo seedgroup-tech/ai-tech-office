@@ -259,7 +259,8 @@ const ETQ={},ZTQ={};
 for(const a of EQUIPE){const n=el("div",{class:"etiq",role:"button",tabindex:"0","aria-label":a.nom+", "+a.role},el("span",{class:"pt"}),el("div",{},el("span",{text:a.nom}),el("small",{text:a.role})));
   n.addEventListener("click",()=>ouvrirAgent(a.id));n.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();ouvrirAgent(a.id)}});calque.append(n);ETQ[a.id]=n}
 function placer(){
-  calque.classList.toggle("compact",vue.s<.62);
+  // vue réduite (zoom arrière) ou petit écran (téléphone, tablette en portrait) : nom court et pastille seulement, le rôle reste dans la fiche
+  calque.classList.toggle("compact",vue.s<.62||CW<820);
   const fixes=[];
   const boxes=[];
   for(const a of EQUIPE){const[sx,sz]=siege(a);const[x,y]=versEcran(P(sx,sz,0));const n=ETQ[a.id];const w=n.offsetWidth,hh=n.offsetHeight;if(!w)continue;
