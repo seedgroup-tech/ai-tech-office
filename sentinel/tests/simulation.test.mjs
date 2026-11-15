@@ -176,8 +176,11 @@ test("sans changement d'état : sentinel.json écrit au plus une fois par heure,
 test("anciens champs de rotation dans le fichier lu : ignorés, jamais réécrits, aucune écriture pour eux", async () => {
   await sansLogs(async () => {
     const monde = mondeSimule(1, { sentinel: sentinelInitial({ dernier_passage: "2026-11-15T10:00:00+01:00", rotation_github: "p1", rotation_sites: 3 }) }), h = horloge("2026-11-15T10:05:00+01:00");
+    await passer(monde, h);   // une première mise à niveau du fichier est permise : elle retire les anciens champs
+    assert.ok(!("rotation_github" in sentinel(monde)) && !("rotation_sites" in sentinel(monde)));
+    const avant = monde.ecritures.length;
     await passer(monde, h);
-    assert.equal(monde.ecritures.length, 0);
+    assert.equal(monde.ecritures.length, avant, "aucune écriture ensuite");
   });
 });
 
