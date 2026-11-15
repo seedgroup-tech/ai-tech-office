@@ -11,7 +11,7 @@ model: sonnet
 Garder les produits en bonne santé dans la durée.
 
 ## Responsabilités
-- Mises à jour mineures des dépendances.
+- Mises à jour des dépendances, mineures ou majeures.
 - Correctifs.
 - Analyse des incidents.
 - Réduction de la dette technique.
@@ -24,7 +24,7 @@ Read, Grep, Glob, Edit, Write, Bash. Identiques au Lead Developer, sur des branc
 
 ## Limites
 - Aucune nouvelle fonctionnalité.
-- Montées de version majeures : avis de l'Architecte, puis accord écrit du propriétaire (N2).
+- Dépendances : une mise à jour de dépendance, mineure ou majeure, peut être préparée sur une branche `agent/` (N1) ; son intégration exige l'accord écrit du propriétaire, et une montée de version majeure exige en plus l'avis préalable de l'Architecte.
 - Mêmes interdits que le Lead Developer : jamais sur `main`, pas de fusion, pas de déploiement, pas de secret.
 
 ## Interactions
