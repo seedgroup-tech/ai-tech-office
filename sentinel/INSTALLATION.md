@@ -130,7 +130,10 @@ La routine est l'agent qui se réveille quand Sentinel lui signale un problème 
    - `dernier_passage` : vide au début, il se remplit au premier passage, **dans les 15 minutes** ;
    - `en_veille` : `false` ;
    - `anomalies_ouvertes` ;
-   - `erreurs_dernier_passage`.
+   - `erreurs_dernier_passage` ;
+   - `fichiers_trop_gros` : `true` si un fichier de la mémoire devient trop gros (dites-le au bureau).
+
+   Si GitHub ne répond pas et que Sentinel n'a encore rien lu, la page affiche seulement `{"statut":"inconnu"}` : réessayez plus tard.
 3. Quand rien ne change, `dernier_passage` est mis à jour **au plus une fois par heure**. Ne vous inquiétez donc pas s'il n'avance pas toutes les 15 minutes.
 4. Cette page ne montre aucun nom de projet, aucune adresse, aucune clé.
 
@@ -138,6 +141,7 @@ La routine est l'agent qui se réveille quand Sentinel lui signale un problème 
 
 **Attention : ce test déclenche un vrai réveil de la routine et consomme une session de votre abonnement Claude.** Faites-le une seule fois.
 
+0. Attendez que `dernier_passage` soit rempli dans la page de santé (étape 6.1) : **le tout premier passage ne réveille jamais personne**, pour ne pas réveiller les agents sur des problèmes déjà connus.
 1. Sur GitHub, dans le dépôt `ai-tech-office-memoire`, ouvrez `etat/projets.json` et ajoutez ce projet dans la liste (sans oublier la virgule avec l'élément précédent) :
 
    ```
@@ -181,7 +185,7 @@ La veille veut dire : Sentinel continue de surveiller et de noter, mais ne réve
 ## Étape 9 — Ce que ça coûte
 
 - **Cloudflare** : l'offre gratuite des Workers suffit (le cron et les requêtes restent dans les limites gratuites pour 4 projets). Si Cloudflare vous propose un passage à une offre payante, refusez : toute dépense est de niveau N3 et demande votre accord écrit.
-- **Claude** : chaque réveil de la routine démarre une session et consomme votre abonnement Claude. Sentinel réveille **au plus 6 fois par jour**, et jamais deux fois de suite pour la même anomalie en moins de 7 jours. Pour couper tout réveil : étape 7.
+- **Claude** : chaque réveil de la routine démarre une session et consomme votre abonnement Claude. Sentinel réveille **au plus 6 fois par jour**, et jamais deux fois pour la même anomalie, même si elle revient plus tard (règle stricte, voir la note de conception). Pour couper tout réveil : étape 7.
 
 ## En cas de problème
 

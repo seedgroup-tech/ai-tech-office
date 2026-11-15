@@ -4,12 +4,14 @@
 # chemins sensibles (voir policies/chemins-sensibles.md). Toute modification
 # exige un examen explicite du propriétaire.
 #
-# AUCUNE VALEUR SECRÈTE ICI, jamais. Les 4 secrets sont saisis directement
+# AUCUNE VALEUR SECRÈTE ICI, jamais. Les secrets sont saisis directement
 # dans Cloudflare (Paramètres, Variables et secrets, type « Secret ») :
 #   - GITHUB_TOKEN_ORG
 #   - GITHUB_TOKEN_PERSO
 #   - ROUTINE_ID
 #   - ROUTINE_TOKEN
+# et, facultatif (recommandé : clé réservée à la mémoire) :
+#   - GITHUB_TOKEN_MEMOIRE
 
 name = "ai-tech-office-sentinel"
 main = "src/index.js"
