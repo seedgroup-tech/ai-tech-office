@@ -23,7 +23,7 @@ const NIV={critique:"var(--bloque)",eleve:"var(--bloque)",moyen:"var(--attente)"
 /* ---------- utilitaires ---------- */
 const $=id=>document.getElementById(id);
 function el(t,a,...k){const n=document.createElement(t);for(const[x,v]of Object.entries(a||{})){if(v==null||v===false)continue;if(x==="class")n.className=v;else if(x==="text")n.textContent=v;else if(x==="style")n.style.cssText=v;else n.setAttribute(x,v===true?"":v)}for(const c of k.flat())if(c!=null&&c!==false)n.append(c.nodeType?c:document.createTextNode(String(c)));return n}
-const s=v=>v==null?"":String(v);
+const s=v=>typeof v==="string"?v:(typeof v==="number"||typeof v==="boolean")?String(v):"";// texte sûr : objets et valeurs non textuelles ignorés
 function dateFr(i){if(!i)return"";if(/^\d{4}-\d{2}-\d{2}$/.test(s(i))){const j=new Date(i+"T12:00:00Z");return isNaN(j)?s(i):j.toLocaleDateString("fr-FR",{day:"numeric",month:"short",timeZone:"UTC"})}const d=new Date(i);return isNaN(d)?s(i):d.toLocaleString("fr-FR",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit",timeZone:"Africa/Douala"})}
 const heure=d=>d.toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit",timeZone:"Africa/Douala"});
 const NR=t=>el("span",{class:"nr",text:t||"Non renseigné"});
@@ -38,7 +38,7 @@ const nomAgent=id=>{const a=agentDef(id);return a?a.nom:s(id)};
 let charge=false,lecture=null,etatSource="Lecture de la mémoire…",enErreur=false,ETAT={agents:{},missions:[],demandes:[],alertes:[],journal:[],decisions:[],meta:null};
 const VERIF={valide:["Signée","var(--dispo)"],historique:["Historique, non signée","var(--gris)"],invalide:["Signature invalide : ne compte pas","var(--bloque)"]};
 const enAttente=d=>d.statut==="en_attente"||d.statut==="historique";
-const statutAgent=id=>{const a=ETAT.agents[id];return a&&ST_A[a.statut]?a.statut:null};
+const statutAgent=id=>{const a=Object.hasOwn(ETAT.agents,id)?ETAT.agents[id]:null;return a&&typeof a.statut==="string"&&Object.hasOwn(ST_A,a.statut)?a.statut:null};
 
 /* ---------- moteur isométrique : open space « plateau flottant » (M-007, repris de references/bureau-v4.html) ---------- */
 const scene=$("scene"),cv=$("cv"),ctx=cv.getContext("2d"),calque=$("calque");
