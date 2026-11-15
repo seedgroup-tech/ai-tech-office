@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Console du bureau</title>
+<meta name="referrer" content="no-referrer">
+<link rel="icon" href="icone.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@600;700;800&family=Inter:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<div class="wrap">
+<header>
+  <div>
+    <div class="marque">SEED Group · direction technique</div>
+    <h1>Le bureau AI TECH OFFICE</h1>
+    <p>Les agents proposent. Le responsable humain décide et autorise. Chaque poste affiche le dernier statut enregistré, sans aucune activité simulée.</p>
+  </div>
+  <div class="source-bloc">
+    <div class="source" id="source" role="status" aria-live="polite"><i></i><span>Lecture de la mémoire…</span></div>
+    <button type="button" id="b-actualiser">Actualiser</button>
+  </div>
+</header>
+<nav class="vues" aria-label="Vues">
+  <a href="#bureau" id="v-bureau">Vue 1 · Bureau</a>
+  <a href="#pilotage" id="v-pilotage">Vue 2 · Pilotage <b id="nb-dec" hidden>0</b></a>
+</nav>
+
+<div id="vue-bureau">
+<section class="premiere">
+  <div class="scene" id="scene">
+    <canvas id="cv" aria-label="Plateau isométrique du bureau : touchez un poste pour ouvrir la fiche de l'agent"></canvas>
+    <div class="calque" id="calque"></div>
+    <button type="button" class="dir" id="b-dir">Bureau de la direction</button>
+    <div class="ctrl"><button type="button" id="z-plus" aria-label="Zoom avant">+</button><button type="button" id="z-moins" aria-label="Zoom arrière">−</button><button type="button" id="z-reset" aria-label="Recentrer la vue">⤢</button></div>
+    <div class="aide">Touchez un agent ou un espace · glissez pour déplacer · molette ou pincement pour zoomer</div>
+  </div>
+  <div class="legende" id="leg-agents"></div>
+  <div class="filtres espaces" id="espaces"></div>
+</section>
+<section>
+  <div class="tete"><h2>L'équipe</h2><p>Le AI CTO et les 9 sous-agents du registre.</p></div>
+  <div class="grille" id="cartes-agents"></div>
+</section>
+</div>
+
+<div id="vue-pilotage" hidden>
+<section>
+  <div class="tete"><h2>Indicateurs</h2><p id="src-kpi"></p></div>
+  <div class="kpi" id="kpi"></div>
+</section>
+<section>
+  <div class="tete"><h2>Bureau de la direction</h2><p>Supervision humaine : rien n'est exécuté sans votre autorisation explicite.</p></div>
+  <div id="direction"></div>
+</section>
+<section>
+  <div class="tete"><h2>Missions</h2><p>Statut et avancement.</p></div>
+  <div class="filtres" id="f-missions"></div>
+  <div class="tableau"><table class="stack"><thead><tr><th>Mission</th><th>Produit</th><th>Statut</th><th>Avancement</th><th>Agents</th><th>Lien</th></tr></thead><tbody id="t-missions"></tbody></table></div>
+  <div class="legende" id="leg-missions"></div>
+</section>
+<section>
+  <div class="tete"><h2>Agents et disponibilité</h2></div>
+  <div class="tableau"><table class="stack"><thead><tr><th>Agent</th><th>Statut</th><th>Mission en cours</th><th>Blocage ou demande</th><th>Mis à jour</th></tr></thead><tbody id="t-agents"></tbody></table></div>
+</section>
+<section class="cols">
+  <div><div class="tete"><h2>Alertes</h2></div><div id="alertes"></div></div>
+  <div><div class="tete"><h2>Événements récents</h2></div><div class="carte liste" id="recents"></div></div>
+</section>
+<section>
+  <div class="tete"><h2>Journal d'activité</h2><p>Filtré par agent si besoin.</p></div>
+  <div class="filtres" id="f-journal"></div>
+  <div class="carte liste" id="journal"></div>
+</section>
+</div>
+<footer id="pied">Console du bureau AI TECH OFFICE · données lues directement dans la mémoire du bureau (dépôt ai-tech-office-memoire, sur GitHub), seule source de vérité. Vos décisions y sont enregistrées et signées (etat/decisions.json). Une décision enregistrée ici n'est transmise aux agents qu'au lancement de la mission. <span id="meta-maj"></span></footer>
+</div>
+<div class="voile" id="voile"></div>
+<aside class="tiroir" id="tiroir" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="t-titre"></aside>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<script src="app.js" defer></script>
+</body>
+</html>
