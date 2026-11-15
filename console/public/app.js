@@ -44,7 +44,7 @@ const statutAgent=id=>{const a=Object.hasOwn(ETAT.agents,id)?ETAT.agents[id]:nul
 const scene=$("scene"),cv=$("cv"),ctx=cv.getContext("2d"),calque=$("calque");
 const LW=1180,LH=800,TX=29,TY=14.5,HZ=46,OX=520,OY=150;
 const P=(x,z,y=0)=>[OX+(x-z)*TX,OY+(x+z)*TY-y*HZ];
-const C={slabT:"#EEF4FA",slabL:"#C9DCEC",slabR:"#B4CDE3",deskT:"#F7FAFD",deskL:"#DCE8F3",deskR:"#C8DAEA",bezel:"#1E2733",screen:"#CFE4F5",eteint:"#2B3A4B",chair:"#3F4D60",chairD:"#2E3A4A",chairL:"#56657A",metal:"#5B6878",potW:"#F4F7FA",veille:"#2F4560",potO:"#E07A4F",leaf:"#4F8A72",leaf2:"#6FA88E",shadow:"rgba(40,70,110,.18)",wall:"#F7FAFD",wallS:"#DCE8F3",polo:"#4F8FCC",trous:"#2B3442",paper:"#FFFFFF",wood:"#E9DCC4"};
+const C={slabT:"#EEF4FA",slabL:"#C9DCEC",slabR:"#B4CDE3",deskT:"#F7FAFD",deskL:"#DCE8F3",deskR:"#C8DAEA",bezel:"#1E2733",screen:"#CFE4F5",eteint:"#2B3A4B",chair:"#3F4D60",chairD:"#2E3A4A",chairL:"#56657A",metal:"#5B6878",potW:"#F4F7FA",veille:"#1E4B7A",potO:"#E07A4F",leaf:"#4F8A72",leaf2:"#6FA88E",shadow:"rgba(40,70,110,.18)",wall:"#F7FAFD",wallS:"#DCE8F3",polo:"#4F8FCC",trous:"#2B3442",paper:"#FFFFFF",wood:"#E9DCC4"};
 function poly(p,f,st){ctx.beginPath();p.forEach((q,i)=>i?ctx.lineTo(q[0],q[1]):ctx.moveTo(q[0],q[1]));ctx.closePath();if(f){ctx.fillStyle=f;ctx.fill()}if(st){ctx.strokeStyle=st;ctx.lineWidth=1;ctx.stroke()}}
 function box(x,z,y,w,d,h,t,l,r){poly([P(x,z+d,y),P(x+w,z+d,y),P(x+w,z+d,y+h),P(x,z+d,y+h)],l);poly([P(x+w,z,y),P(x+w,z+d,y),P(x+w,z+d,y+h),P(x+w,z,y+h)],r);poly([P(x,z,y+h),P(x+w,z,y+h),P(x+w,z+d,y+h),P(x,z+d,y+h)],t)}
 function dalle(x,z,w,d,c,st){poly([P(x,z),P(x+w,z),P(x+w,z+d),P(x,z+d)],c,st)}
@@ -76,7 +76,8 @@ const F_PROD="800 12px 'Inter Tight', Arial",F_OBJ="600 9.5px Inter, Arial",F_PE
 // textes coupés une seule fois, à chaque lecture de la mémoire (pas à chaque image)
 function preparerProjets(garder){const out=[];ctx.save();
   for(const m of ETAT.missions){if(!m||!ACTIVES.includes(m.statut))continue;
-    const prod=s(m.produit).trim().slice(0,60),num=s(m.numero).trim().slice(0,20),obj=s(m.objet).trim().slice(0,140);
+    const net=v=>s(v).replace(/[\u0000-\u001F\u007F\u200E\u200F\u202A-\u202E\u2066-\u2069]/g,"").trim();// sans caractères de contrôle ni d'inversion du sens du texte
+    const prod=net(m.produit).slice(0,60),num=net(m.numero).slice(0,20),obj=net(m.objet).slice(0,140);
     const av=typeof m.avancement==="number"&&isFinite(m.avancement)?Math.max(0,Math.min(100,Math.round(m.avancement))):null;
     ctx.font=F_PROD;const lp=prod?ajuster(prod.toUpperCase(),PJ_W):"PRODUIT NON RENSEIGNÉ";
     ctx.font=F_OBJ;const lo=ajuster([num,obj].filter(Boolean).join(" · ")||"Mission non renseignée",PJ_W);
@@ -128,7 +129,7 @@ function decor(){
 // positions : o = direction du regard (0 vers -z, 1 vers +z, 2 vers -x, 3 vers +x)
 const siege=a=>{if(a.debout)return a.d;const[x,z]=a.d;return [[x+.8,z+1.3],[x+.8,z-.5],[x+1.3,z+.8],[x-.5,z+.8]][a.o]};
 // couleur d'écran d'un poste, d'après le statut enregistré : bleu (lignes qui défilent) = en mission,
-// rouge qui clignote = bloqué, veille (sombre) = disponible, éteint = poste inoccupé, agent indisponible
+// rouge qui clignote = bloqué, veille (bleu nuit) = disponible, éteint = poste inoccupé, agent indisponible
 // ou statut non renseigné ; écran clair = en attente
 const clignote=ph=>ANIM&&((T+ph*.1)%1)>.5;// 1 clignotement par seconde
 function couleurEcran(st,ph){return st==="en_mission"?"#2563EB":st==="bloque"?(clignote(ph)?"#5E1717":"#C62828"):st==="disponible"?C.veille:(!st||st==="indisponible")?C.eteint:null}
@@ -158,9 +159,9 @@ function dalleEcranZ(x,z,y,w,h,ec,defil=-1){const q=[P(x,z,y),P(x+w,z,y),P(x+w,z
 function dalleEcranX(x,z,y,d,h,ec,defil=-1){const q=[P(x,z,y),P(x,z+d,y),P(x,z+d,y+h),P(x,z,y+h)];poly(q,ec||C.screen);
   if(!ec){ctx.strokeStyle="rgba(30,60,100,.35)";ctx.lineWidth=1.2;for(let i=1;i<5;i++)lignesEcran(P(x,z+.08,y+h-i*.1),P(x,z+.08+d*(i%2?.7:.45),y+h-i*.1))}
   else if(defil>=0){ctx.save();ctx.clip();ctx.strokeStyle="rgba(219,234,254,.7)";ctx.lineWidth=1.2;const n=Math.floor(defil/.1),off=defil-n*.1;for(let i=0;i<7;i++){const yy=y+h-.04-i*.1+off;const k=LIG[(i+n)%6];lignesEcran(P(x,z+.08,yy),P(x,z+.08+d*k,yy))}ctx.restore()}}
-// écran vu de dos : un voyant sur le moniteur, bleu qui pulse (en mission) ou rouge qui clignote (bloqué)
-function voyant([a,b],st,ph){if(st!=="en_mission"&&st!=="bloque")return;ctx.save();ctx.lineCap="round";ctx.lineWidth=2.4;
-  if(st==="en_mission"){ctx.strokeStyle="#60A5FA";ctx.globalAlpha=.55+.45*osc(4,ph)}else{ctx.strokeStyle=clignote(ph)?"#5E1717":"#EF4444"}
+// écran vu de dos : un voyant sur le moniteur, bleu qui pulse (en mission), rouge qui clignote (bloqué), vert fixe (veille, disponible)
+function voyant([a,b],st,ph){if(st!=="en_mission"&&st!=="bloque"&&st!=="disponible")return;ctx.save();ctx.lineCap="round";ctx.lineWidth=2.4;
+  if(st==="en_mission"){ctx.strokeStyle="#60A5FA";ctx.globalAlpha=.55+.45*osc(4,ph)}else if(st==="disponible"){ctx.strokeStyle="#3FA672";ctx.globalAlpha=.75}else{ctx.strokeStyle=clignote(ph)?"#5E1717":"#EF4444"}
   lignesEcran(a,b);ctx.restore()}
 function poste(a){if(!a.debout)bureauNu(a.d[0],a.d[1],a.o,statutAgent(a.id),PHASE[a.id])}
 // fauteuil à roulettes : piètement étoile, assise, dossier
@@ -295,7 +296,7 @@ cadrer();recentrer();
 /* ---------- rendu des données ---------- */
 function majEtiquettes(){for(const a of EQUIPE){const st=statutAgent(a.id);const n=ETQ[a.id];const v=ST_A[st];n.className="etiq st-"+(st||"nr");const pt=n.querySelector(".pt");pt.style.background=v?v[2]:"#C9CCD1";pt.textContent=v?v[3]:"?";n.title=a.role+" — "+(v?v[0]:"Statut non renseigné")}}
 function legendes(){
-  $("leg-agents").replaceChildren(...Object.values(ST_A).map(v=>el("span",{},el("i",{style:"background:"+v[2]}),v[0])),el("span",{},el("i",{style:"background:#C9CCD1"}),"Non renseigné"),el("span",{text:"· écran bleu qui défile = en mission, rouge qui clignote = bloqué, sombre = en veille (disponible) · chaque mouvement traduit le statut enregistré · Yano = l'AI CTO"}));
+  $("leg-agents").replaceChildren(...Object.values(ST_A).map(v=>el("span",{},el("i",{style:"background:"+v[2]}),v[0])),el("span",{},el("i",{style:"background:#C9CCD1"}),"Non renseigné"),el("span",{text:"· écran bleu qui défile = en mission, rouge qui clignote = bloqué, bleu nuit ou voyant vert = en veille (disponible) · chaque mouvement traduit le statut enregistré · Yano = l'AI CTO"}));
   $("leg-missions").replaceChildren(...Object.values(ST_M).map(v=>el("span",{},el("i",{style:"background:"+v[1]}),v[0])));
 }
 function carteAgent(a){const st=statutAgent(a.id);const d=ETAT.agents[a.id]||{};const b=el("button",{type:"button",class:"carte agent-c"},el("div",{class:"av",style:"background:"+a.col},a.nom.charAt(0)),el("div",{},el("h3",{text:a.nom}),el("div",{class:"meta",text:a.role}),el("div",{style:"margin-top:4px"},st?pastille(ST_A,st):NR()),d.mission_en_cours?el("div",{class:"meta",text:"Mission : "+s(d.mission_en_cours)}):null));b.addEventListener("click",()=>ouvrirAgent(a.id));return b}
