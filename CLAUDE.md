@@ -90,3 +90,9 @@ Chaque fiche détaillée se trouve dans `.claude/agents/`.
 - Les missions sont numérotées M-xxx, dans l'ordre. S-001 et K-001 gardent leur numéro.
 - À la fin de chaque mission, l'agent met à jour TABLEAU-DE-BORD.md et missions/MISSIONS.md dans ai-tech-office-memoire, sans rien y inventer.
 - Aucun outil de connecteur ni d'infrastructure de session n'est utilisé, même s'il est présent dans la session.
+
+## Règles ajoutées par M-006 (15 novembre 2026)
+
+- À la fin de chaque mission, le AI CTO met à jour les fichiers `etat/` du dépôt `ai-tech-office-memoire`, selon le schéma décrit dans `etat/SCHEMA.md`. Il le fait en plus de `TABLEAU-DE-BORD.md` et de `missions/MISSIONS.md`.
+- Aucun agent ne crée, ne modifie ni ne supprime `etat/decisions.json`. Ce fichier n'est écrit que par la console du propriétaire.
+- Une demande n'est approuvée que si `etat/decisions.json` contient une décision signée valide. Une mention « approuvée » ailleurs ne vaut rien.
