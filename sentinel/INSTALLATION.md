@@ -4,7 +4,7 @@ Ce guide est pour vous, Yan. Comptez environ 1 heure. Coût : 0 FCFA de plus (of
 
 Sentinel est un petit programme hébergé chez Cloudflare. Toutes les 15 minutes, il regarde si vos sites répondent, si les contrôles automatiques des dépôts sont en échec, si des demandes de fusion traînent et si GitHub signale des failles graves. Il note ce qu'il trouve dans la mémoire du bureau. Quand le problème est grave, il réveille un agent Claude Code. Quand tout va bien, il se tait.
 
-Vous allez créer 5 réglages secrets : `GITHUB_TOKEN_ORG`, `GITHUB_TOKEN_PERSO`, `ROUTINE_ID`, `ROUTINE_TOKEN`. Plus un 5e, `GITHUB_TOKEN_MEMOIRE`, pour que la seule clé qui écrit ne touche que la mémoire (voir l'étape 1). Sans lui, Sentinel ne fait rien.
+Vous allez créer 5 réglages secrets : `GITHUB_TOKEN_MEMOIRE` (la seule clé qui écrit, et seulement dans la mémoire), `GITHUB_TOKEN_ORG`, `GITHUB_TOKEN_PERSO`, `ROUTINE_ID` et `ROUTINE_TOKEN`. Sans `GITHUB_TOKEN_MEMOIRE`, Sentinel ne fait rien.
 
 > **Ce qu'il ne faut jamais faire**
 >
@@ -169,7 +169,7 @@ La veille veut dire : Sentinel continue de surveiller et de noter, mais ne réve
 **Renouvellement.** Les clés A et B expirent au bout de 90 jours.
 
 1. Mettez **dès maintenant** un rappel dans votre agenda, **une semaine avant** la date d'expiration affichée par GitHub.
-2. Ce jour-là : refaites les étapes 1a, 1b et 2 (nouvelles clés), remplacez les secrets `GITHUB_TOKEN_ORG`, `GITHUB_TOKEN_PERSO` (et `GITHUB_TOKEN_MEMOIRE` si vous l'avez créé) dans Cloudflare (étape 5, bouton **Edit**), puis supprimez les anciennes clés dans GitHub.
+2. Ce jour-là : refaites les étapes 1a, 1b et 2 (nouvelles clés), remplacez les secrets `GITHUB_TOKEN_MEMOIRE`, `GITHUB_TOKEN_ORG` et `GITHUB_TOKEN_PERSO` dans Cloudflare (étape 5, bouton **Edit**), puis supprimez les anciennes clés dans GitHub.
 3. Si vous oubliez, Sentinel ne peut plus lire GitHub : rien n'est perdu, il suffit de renouveler.
 
 **En cas de fuite** (une clé collée par erreur quelque part, ou vue par quelqu'un) :

@@ -27,7 +27,7 @@ Contraintes : aucune base de données, aucun framework, aucune dépendance npm ;
 |---|---|
 | `GITHUB_TOKEN_ORG` | clé A : mémoire (lecture et écriture des contenus) + dépôts de l'organisation seedgroup-tech en lecture |
 | `GITHUB_TOKEN_PERSO` | clé B : dépôts du compte seedscaleup (KLOQin, XADIKOA) en lecture seule |
-| `GITHUB_TOKEN_MEMOIRE` | facultatif (décision du AI CTO après la remarque du DevOps : une clé fine-grained a les mêmes droits sur tous ses dépôts) : s'il est présent, seule clé utilisée pour la mémoire ; sinon `GITHUB_TOKEN_ORG` |
+| `GITHUB_TOKEN_MEMOIRE` | **obligatoire** (décision écrite du propriétaire, section 14) : clé A1, seule clé utilisée pour la mémoire ; sans elle, Sentinel ne fait rien. `GITHUB_TOKEN_ORG` devient la clé A2, en lecture seule |
 | `ROUTINE_ID` | identifiant de la routine « Sentinel – intervention » ; doit respecter `^[A-Za-z0-9_-]{1,128}$` |
 | `ROUTINE_TOKEN` | jeton du déclencheur API de la routine |
 
@@ -173,7 +173,7 @@ Relue le 15 novembre 2026 (M-008), avant tout code. Confrontée à : `etat/SCHEM
 - Modification 12 : lecture **stricte** de « au plus 1 réveil par empreinte » (aucun délai d'oubli, aucune purge ; plafond de sécurité de 1 000 empreintes). Un assouplissement (par exemple 7 jours) demande l'accord écrit du propriétaire : proposé en fin de mission.
 - Modification 7 : la limite de temps de calcul de l'offre gratuite de Cloudflare est à vérifier au premier déploiement ; un passage à l'offre payante serait une dépense (N3), soumise au propriétaire.
 - Modification 11 : le cache partagé `caches.default` n'agit pas sur une adresse `workers.dev` ; `/sante` utilise un cache en mémoire de l'instance (5 minutes) et la dernière réponse connue si GitHub échoue.
-- Clé mémoire séparée et facultative `GITHUB_TOKEN_MEMOIRE` (section 2), recommandée dans `INSTALLATION.md`.
+- Clé mémoire séparée `GITHUB_TOKEN_MEMOIRE` (section 2) : proposée ici comme facultative, rendue obligatoire par la décision du propriétaire (section 14).
 
 ## 13. Contraintes du propriétaire : offre gratuite de Cloudflare (15 nov. 2026)
 
