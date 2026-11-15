@@ -5,6 +5,8 @@
 
 const DUREE_CACHE_MS = 60 * 60 * 1000;
 const cacheCerts = new Map(); // domaine -> { keys, expire }
+const derniereRelecture = new Map(); // domaine -> horodatage de la dernière relecture forcée
+const INTERVALLE_RELECTURE_MS = 60 * 1000;
 
 export function lireConfigAcces(env) {
   const brut = String(env?.ACCESS_TEAM_DOMAIN || "").trim().toLowerCase().replace(/^https:\/\//, "").replace(/\/+$/, "");
@@ -31,7 +33,11 @@ function lireJson(partie) {
 
 async function certificats(domaine, fetchFn, forcer) {
   const c = cacheCerts.get(domaine);
-  if (!forcer && c && c.expire > Date.now()) return c.keys;
+  if (c && c.expire > Date.now()) {
+    if (!forcer) return c.keys;
+    if (Date.now() - (derniereRelecture.get(domaine) || 0) < INTERVALLE_RELECTURE_MS) return c.keys;
+  }
+  if (forcer) derniereRelecture.set(domaine, Date.now());
   const rep = await fetchFn(`https://${domaine}/cdn-cgi/access/certs`, { headers: { Accept: "application/json" } });
   if (!rep.ok) throw new Error("certificats indisponibles");
   const j = await rep.json();
@@ -42,6 +48,7 @@ async function certificats(domaine, fetchFn, forcer) {
 
 export function viderCacheCertificats() {
   cacheCerts.clear();
+  derniereRelecture.clear();
 }
 
 // Renvoie { ok: true, email } ou { ok: false, raison }.
@@ -87,7 +94,8 @@ export async function verifierJeton(jeton, config, options = {}) {
   if (!auds.some((a) => config.auds.includes(a))) return { ok: false, raison: "audience" };
   if (typeof charge.exp !== "number" || charge.exp <= maintenant) return { ok: false, raison: "expire" };
   if (typeof charge.nbf === "number" && charge.nbf > maintenant + 60) return { ok: false, raison: "pas encore valide" };
-  const email = String(charge.email || "").trim().toLowerCase();
+  if (typeof charge.email !== "string") return { ok: false, raison: "email" };
+  const email = charge.email.trim().toLowerCase();
   if (!email || email !== config.email) return { ok: false, raison: "email" };
 
   return { ok: true, email };

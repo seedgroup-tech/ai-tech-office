@@ -198,3 +198,22 @@ test("route /api/etat : autre méthode que GET refusée", async () => {
   const rep = await routeEtat({ request: new Request("https://c.example/api/etat", { method: "DELETE" }), env: ENV });
   assert.equal(rep.status, 405);
 });
+
+test("POST /api/decision : decisions.json corrompu -> rien n'est écrasé", async () => {
+  const etat = etatEssai();
+  etat["etat/decisions.json"] = { pas: "une liste" };
+  const gh = fauxGitHub(etat);
+  const rep = await enregistrerDecision({ request: requete({ demande_id: "S-001-entetes", choix: "approuvee" }), env: ENV, email: EMAIL, fetchFn: gh.fetchFn });
+  assert.equal(rep.status, 502);
+  assert.deepEqual(gh.depot.get("etat/decisions.json").valeur, { pas: "une liste" });
+  assert.equal(gh.appels.filter((a) => a.methode === "PUT").length, 0);
+});
+
+test("POST /api/decision : une décision signée plus récente l'emporte même si une historique la suit dans le fichier", async () => {
+  const gh = fauxGitHub(etatEssai());
+  await enregistrerDecision({ request: requete({ demande_id: "M-001-fiches", choix: "refusee" }), env: ENV, email: EMAIL, fetchFn: gh.fetchFn });
+  const f = gh.depot.get("etat/decisions.json");
+  f.valeur.push({ id: "H-X", demande_id: "M-001-fiches", choix: "approuvee", decide_le: "2026-11-20", signature: null, origine: "historique, enregistrée par Claude" });
+  const etat = await (await lireEtat(ENV, { fetchFn: gh.fetchFn })).json();
+  assert.equal(etat.demandes.find((x) => x.id === "M-001-fiches").statut, "refusee");
+});

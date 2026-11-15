@@ -79,7 +79,8 @@ function idDecision(dateIso) {
 async function modifierAvecReessai(gh, chemin, modifier, message) {
   for (let essai = 0; essai < 2; essai++) {
     const { valeur, sha } = await gh.lire(chemin);
-    const nouvelle = await modifier(tableau(valeur));
+    if (valeur !== null && !Array.isArray(valeur)) throw new Error("Fichier " + chemin + " illisible : rien n'est écrit.");
+    const nouvelle = await modifier(valeur || []);
     try {
       await gh.ecrire(chemin, nouvelle, sha, message);
       return;
@@ -107,8 +108,11 @@ export async function enregistrerDecision({ request, env, email, fetchFn, mainte
     return reponseJson({ erreur: "Format attendu : JSON." }, 415);
   }
 
-  const texte = await request.text();
-  if (texte.length > LIMITE_CORPS) return reponseJson({ erreur: "Requête trop longue." }, 413);
+  const annonce = Number(request.headers.get("Content-Length"));
+  if (Number.isFinite(annonce) && annonce > LIMITE_CORPS) return reponseJson({ erreur: "Requête trop longue." }, 413);
+  const octets = await request.arrayBuffer();
+  if (octets.byteLength > LIMITE_CORPS) return reponseJson({ erreur: "Requête trop longue." }, 413);
+  const texte = new TextDecoder().decode(octets);
   let corps;
   try { corps = JSON.parse(texte); } catch { return reponseJson({ erreur: "Requête invalide." }, 400); }
   const v = validerCorps(corps);

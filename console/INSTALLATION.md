@@ -36,7 +36,7 @@ Les écrans de GitHub et de Cloudflare changent de temps en temps : si un libell
 7. Si GitHub indique que la clé attend l'accord de l'organisation : allez dans l'organisation **seedgroup-tech**, **Settings**, **Personal access tokens**, **Pending requests**, et approuvez votre propre demande.
 8. GitHub affiche la clé **une seule fois**. Gardez cette page ouverte : vous la collerez à l'étape 3. Ne la copiez dans aucun fichier, aucun message.
 
-**Rappel de renouvellement.** La clé expire au bout de 90 jours. Mettez dès maintenant un rappel dans votre agenda, **une semaine avant** la date d'expiration affichée par GitHub. Ce jour-là : refaites cette étape 1 (nouvelle clé), remplacez `GITHUB_TOKEN` dans Cloudflare (étape 3, bouton **Edit**), redéployez (étape 3, point 8), puis supprimez l'ancienne clé dans GitHub. Si vous oubliez, la console affichera « Lecture de la mémoire impossible » : rien n'est perdu, il suffit de renouveler.
+**Rappel de renouvellement.** La clé expire au bout de 90 jours. Mettez dès maintenant un rappel dans votre agenda, **une semaine avant** la date d'expiration affichée par GitHub. Ce jour-là : refaites cette étape 1 (nouvelle clé), remplacez `GITHUB_TOKEN` dans Cloudflare (étape 3, bouton **Edit**), redéployez (voir « Redéployer », à la fin de l'étape 3), puis supprimez l'ancienne clé dans GitHub. Si vous oubliez, la console affichera « Lecture de la mémoire impossible » : rien n'est perdu, il suffit de renouveler.
 
 ## Étape 2 — Créer le projet Cloudflare Pages
 
@@ -87,9 +87,12 @@ Ensuite :
 
 - gardez une copie **uniquement** dans votre gestionnaire de mots de passe personnel (si vous en avez un). Si cette clé est perdue ou changée, les décisions déjà signées s'afficheront « signature invalide » ;
 - ne la mettez dans aucun fichier, aucun e-mail, aucune conversation (ni avec Claude) ;
-- copiez ensuite n'importe quel autre texte, pour effacer le presse-papiers.
+- copiez ensuite n'importe quel autre texte, pour effacer le presse-papiers ;
+- si votre ordinateur garde un **historique du presse-papiers** (sur Windows : touches Windows + V ; sur Mac : certaines applications de presse-papiers), ouvrez-le et supprimez-y la valeur.
 
-5. Quand l'étape 4 est faite et les 5 réglages saisis : **Deployments**, sur le dernier déploiement de production, menu **⋯**, **Retry deployment** (ou **Redeploy**). Les réglages ne s'appliquent qu'à un nouveau déploiement.
+### Redéployer
+
+Quand l'étape 4 est faite et les 5 réglages saisis : **Deployments**, sur le dernier déploiement de production, menu **⋯**, **Retry deployment** (ou **Redeploy**). Les réglages ne s'appliquent qu'à un nouveau déploiement.
 
 ## Étape 4 — Protéger la console avec Cloudflare Access (offre gratuite)
 
@@ -109,7 +112,7 @@ Ensuite :
    - N'ajoutez aucune autre règle.
 6. Enregistrez l'application (**Save**).
 7. **Trouver `ACCESS_AUD`** : rouvrez l'application **Console du bureau** (**Configure** / **Edit**), onglet **Overview** ou **Basic information**. Copiez **Application Audience (AUD) Tag** : une longue suite de chiffres et de lettres. C'est la valeur de `ACCESS_AUD`.
-8. Revenez à l'étape 3 pour saisir `ACCESS_TEAM_DOMAIN` et `ACCESS_AUD`, puis redéployez (étape 3, point 5).
+8. Revenez à l'étape 3 pour saisir `ACCESS_TEAM_DOMAIN` et `ACCESS_AUD`, puis redéployez (« Redéployer », à la fin de l'étape 3).
 
 ## Étape 5 — Vérifier
 
@@ -128,7 +131,7 @@ Si une vérification échoue : arrêtez-vous, n'utilisez pas la console, et déc
 
 | Ce que vous voyez | Ce que cela veut dire | Que faire |
 |---|---|---|
-| « Accès refusé. » après connexion | un des réglages `ACCESS_TEAM_DOMAIN`, `ACCESS_AUD` ou `OWNER_EMAIL` ne correspond pas, ou le déploiement n'a pas été refait | vérifiez les 3 valeurs (étapes 3 et 4), puis redéployez |
+| « Accès refusé. » après connexion | un des réglages `ACCESS_TEAM_DOMAIN`, `ACCESS_AUD` ou `OWNER_EMAIL` ne correspond pas, ou le déploiement n'a pas été refait | vérifiez les 3 valeurs (étapes 3 et 4), puis redéployez (fin de l'étape 3) |
 | « Configuration incomplète de la console. » | `GITHUB_TOKEN` ou `DECISION_KEY` manque (ou `DECISION_KEY` fait moins de 32 caractères) | étape 3, puis redéployez |
 | « Lecture de la mémoire impossible. » | la clé GitHub a expiré, ou n'a pas accès au dépôt mémoire | étape 1 (nouvelle clé), puis étape 3 |
 | « Connexion expirée » | votre session Access (24 h) est terminée | rechargez la page et reconnectez-vous |
@@ -141,3 +144,5 @@ Si une vérification échoue : arrêtez-vous, n'utilisez pas la console, et déc
 - La clé GitHub reste chez Cloudflare : elle n'est jamais envoyée à votre navigateur.
 - Votre adresse e-mail est enregistrée avec chaque décision, dans la mémoire (dépôt privé).
 - Elle ne lance aucune mission et ne prévient aucun agent : une décision n'est utilisée qu'au lancement de la mission suivante.
+- Les anciens déploiements restent accessibles à leur propre adresse (protégés de la même façon). Si le bureau vous signale un jour un défaut de sécurité corrigé dans une nouvelle version, supprimez les anciens déploiements dans **Deployments** (menu **⋯**, **Delete**).
+- Votre clé GitHub permet techniquement plus que ce que fait la console (écrire n'importe quel fichier du dépôt mémoire). Ne la réutilisez jamais ailleurs, et jetez de temps en temps un œil à l'onglet **Commits** du dépôt mémoire : chaque décision doit y apparaître sous la forme « Décision du propriétaire : … ».

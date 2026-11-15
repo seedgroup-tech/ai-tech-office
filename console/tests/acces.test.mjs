@@ -84,3 +84,16 @@ test("clé inconnue : les certificats sont relus une fois (rotation), puis refus
   assert.equal(r.ok, false);
   assert.equal(certs.appels(), 2);
 });
+
+test("e-mail qui n'est pas une chaîne : refusé", async () => {
+  const { fetchFn } = fauxCerts(paire);
+  const r = await verifierJeton(await fabriquerJeton(paire, { ...chargeValide(), email: [EMAIL] }), config, { fetchFn });
+  assert.equal(r.ok, false);
+});
+
+test("clés inconnues répétées : au plus une relecture forcée des certificats par minute", async () => {
+  const autre = await paireRsa("cle-3");
+  const certs = fauxCerts(paire);
+  for (let i = 0; i < 5; i++) await verifierJeton(await fabriquerJeton(autre, chargeValide()), config, { fetchFn: certs.fetchFn });
+  assert.equal(certs.appels(), 2);
+});
