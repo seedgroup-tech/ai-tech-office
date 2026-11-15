@@ -1,0 +1,22 @@
+# Réglages du Worker Sentinel (mission M-008).
+#
+# FICHIER SENSIBLE : il correspond au motif « wrangler.toml » du contrôle des
+# chemins sensibles (voir policies/chemins-sensibles.md). Toute modification
+# exige un examen explicite du propriétaire.
+#
+# AUCUNE VALEUR SECRÈTE ICI, jamais. Les 4 secrets sont saisis directement
+# dans Cloudflare (Paramètres, Variables et secrets, type « Secret ») :
+#   - GITHUB_TOKEN_ORG
+#   - GITHUB_TOKEN_PERSO
+#   - ROUTINE_ID
+#   - ROUTINE_TOKEN
+
+name = "ai-tech-office-sentinel"
+main = "src/index.js"
+compatibility_date = "2026-06-01"
+
+[triggers]
+crons = ["*/15 * * * *"]
+
+[observability]
+enabled = true
