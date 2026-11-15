@@ -82,3 +82,11 @@ Chaque fiche détaillée se trouve dans `.claude/agents/`.
 - `policies/approbations.md` — contenu d'une demande d'approbation N3.
 - `policies/secrets.md` — règles sur les secrets.
 - `policies/chemins-sensibles.md` — fichiers surveillés par le contrôle de fusion.
+
+## Règles ajoutées par M-003 (15 novembre 2026)
+
+- Mode accéléré : une mission tient en un seul prompt. L'agent fait relire son travail par ses agents QA et Sécurité dans la même session, puis donne le lien de comparaison. Le propriétaire décide et fusionne.
+- Une relecture par une session distincte reste obligatoire pour toute modification de CLAUDE.md, .claude/ ou policies/ écrite par un agent.
+- Les missions sont numérotées M-xxx, dans l'ordre. S-001 et K-001 gardent leur numéro.
+- À la fin de chaque mission, l'agent met à jour TABLEAU-DE-BORD.md et missions/MISSIONS.md dans ai-tech-office-memoire, sans rien y inventer.
+- Aucun outil de connecteur ni d'infrastructure de session n'est utilisé, même s'il est présent dans la session.
