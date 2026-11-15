@@ -48,7 +48,7 @@ En lecture seule d'abord : journaux du workflow, historique récent, avis Depend
 - missions/<M-xxx>.md (compte rendu), missions/MISSIONS.md, TABLEAU-DE-BORD.md.
 - etat/missions.json, etat/agents.json (retour à « disponible », ou « en_attente » si l'agent attend le propriétaire), etat/journal.json (entrée « Intervention Sentinel : … »), etat/demandes.json si une décision du propriétaire est nécessaire.
 - etat/alertes.json : ne modifie aucun champ géré par Sentinel, et ne change jamais le statut d'une alerte dont la source est « sentinel » (c'est Sentinel qui la ferme) ; tu peux seulement ajouter à l'alerte concernée un champ "intervention" avec le numéro de mission et le lien du compte rendu.
-- Jamais etat/decisions.json, jamais etat/sentinel.json.
+- Jamais etat/decisions.json, jamais etat/sentinel.json, jamais etat/projets.json (ce sont les données de Sentinel et de vos décisions).
 
 7. INTERDITS ABSOLUS
 Ne jamais fusionner, déployer, ouvrir ou approuver une demande de fusion, lire ou toucher un secret, modifier un réglage GitHub, Cloudflare ou d'une routine, supprimer des données, dépenser, contacter un tiers, utiliser un connecteur. Ne jamais déclencher Sentinel ni une autre routine. En cas de doute sur le niveau de risque, retiens le niveau supérieur et arrête-toi.
