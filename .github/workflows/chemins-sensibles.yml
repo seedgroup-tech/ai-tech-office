@@ -43,7 +43,7 @@ jobs:
             [ -z "$f" ] && return 0
             base="${f##*/}"
             case "/$f" in
-              */.claude/*|*/.github/*|*/supabase/*|*/migrations/*)
+              */.claude/*|*/.github/*|*/policies/*|*/supabase/*|*/migrations/*)
                 echo "SENSIBLE : $f"; SENSIBLE=1; return 0 ;;
             esac
             case "$base" in
