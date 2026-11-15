@@ -1,18 +1,19 @@
 {
 /* ---------- registre (définitions fixes du dossier, pas des données d'activité) ---------- */
 const PEAU=["#4A2E1F","#5A3825","#6B4226","#7A4A2A","#8A5A3B"];
-const ZONES=[{id:"prod",nom:"Produit & architecture",x:0,z:0,w:8.4,d:7.4,c:"#E9EEF8",lx:6.6,lz:0.5,tx:.5,tz:7.1},{id:"dir",nom:"Direction",x:9,z:0,w:6,d:6,c:"#E8D9BD",lx:12,lz:6.3},{id:"inge",nom:"Ingénierie & livraison",x:16,z:0,w:8,d:9,c:"#E7F1EA",lx:20,lz:8.8,tx:16.4,tz:8.7},{id:"qual",nom:"Qualité, sécurité & documentation",x:0,z:9.6,w:8.4,d:6.4,c:"#F4ECDF",lx:5.2,lz:15.9,tx:.5,tz:15.7}];
+const ZONES=[{id:"prod",nom:"Produit & architecture",x:.4,z:.6,w:6.8,d:6.6,c:"rgba(142,197,214,.13)",tx:.6,tz:7.6},{id:"dir",nom:"Direction",x:8.6,z:.6,w:6,d:5.2,c:"rgba(201,169,110,.12)",tx:8.8,tz:6.3},{id:"inge",nom:"Ingénierie & livraison",x:15.2,z:.6,w:6.4,d:6.6,c:"rgba(142,197,214,.13)",tx:15.4,tz:7.6},{id:"qual",nom:"Qualité, sécurité & documentation",x:.4,z:8.6,w:7.4,d:6.8,c:"rgba(142,197,214,.13)",tx:.6,tz:15.8}];
+const LIBRES=[[4.6,10.2,3]];
 const EQUIPE=[
- {id:"cto",nom:"AI CTO",role:"Coordination et arbitrages",zone:"dir",d:[9.6,4.1],col:"#20242A",resp:"Qualifie vos demandes, établit le plan, délègue, contrôle la cohérence, prépare vos décisions et vous rend compte. Unique interlocuteur du propriétaire.",missions:["Fiche et plan de chaque mission","Demandes d'approbation","Compte rendu de fin de mission","Rapport hebdomadaire"],limites:"Ne code pas dans les produits, ne fusionne rien, ne déploie rien, n'approuve jamais à votre place.",look:{peau:1,haut:"#20242A",veste:1,bas:"#151719",ch:"court",lun:1,cravate:"#2563EB"}},
- {id:"pm",nom:"Produit",role:"Product Manager",zone:"prod",d:[0.8,1.2],col:"#2563EB",resp:"Transforme une demande en besoin précis, priorisé et vérifiable.",missions:["Fiche besoin et critères d'acceptation","Note de priorisation"],limites:"Aucune décision commerciale ou tarifaire.",look:{peau:3,haut:"#F1EFE9",bas:"#151719",ch:"afro"}},
- {id:"ux",nom:"Design",role:"UX/UI Designer",zone:"prod",d:[4.9,1.2],col:"#0E7490",resp:"Des parcours simples et des écrans fidèles à la charte de chaque marque, d'abord sur téléphone.",missions:["Maquettes et prototypes","Liste des écrans","Notes d'accessibilité"],limites:"Aucune logique métier ; aucune dépendance sans avis de l'Architecte et votre accord écrit.",look:{peau:2,haut:"#0E7490",bas:"#F1EFE9",ch:"chignon"}},
- {id:"archi",nom:"Architecte",role:"Software Architect",zone:"prod",d:[2.8,4.3],col:"#3A3F47",resp:"Des choix techniques durables et cohérents d'un produit à l'autre.",missions:["Note de conception","Décisions d'architecture","Schéma de données","Avis sur les dépendances"],limites:"Ne réalise pas la fonctionnalité ; aucune dépendance payante sans votre accord.",look:{peau:0,haut:"#3A3F47",veste:1,bas:"#3A3F47",ch:"court",barbe:1}},
- {id:"lead",nom:"Dev",role:"Lead Developer",zone:"inge",d:[16.8,1.2],col:"#1D4ED8",resp:"Réalise les changements de code sur une branche agent/, avec leurs tests.",missions:["Branche et lien de comparaison","Tests unitaires","Note de version"],limites:"Ne pousse jamais sur main, ne fusionne pas, ne déploie pas, ne lit aucun secret.",look:{peau:1,haut:"#151719",bas:"#151719",ch:"court",casque:"#2563EB"}},
- {id:"maint",nom:"Maintenance",role:"Maintenance Engineer",zone:"inge",d:[20.9,1.2],col:"#4D7C0F",resp:"Maintenance, incidents et évolutions : correctifs, mises à jour préparées sur branche, analyse des incidents.",missions:["Demandes de maintenance groupées","Rapport d'incident"],limites:"Aucune nouvelle fonctionnalité ; toute intégration de mise à jour exige votre accord écrit.",look:{peau:4,haut:"#F1EFE9",bas:"#20242A",ch:"court"}},
- {id:"devops",nom:"DevOps",role:"DevOps Engineer",zone:"inge",d:[16.8,5.3],col:"#5B616B",resp:"Environnements et opérations techniques autorisées : aperçus, sauvegardes, liste de contrôle avant mise en ligne.",missions:["Pipelines","Liste de contrôle de mise en production","Procédure de restauration"],limites:"Aucune action sur la production ; tout fichier de CI est N2.",look:{peau:2,haut:"#20242A",bas:"#5B616B",ch:"court",lun:1}},
- {id:"qa",nom:"QA",role:"QA Engineer",zone:"qual",d:[0.8,10.3],col:"#7C3AED",resp:"Tests, qualité et anomalies : prouve que le changement fonctionne et que rien n'a cassé.",missions:["Plan de test","Rapport de recette critère par critère"],limites:"Ne modifie jamais le code applicatif pour faire passer un test.",look:{peau:3,haut:"#F1EFE9",veste:1,bas:"#151719",ch:"afro"}},
- {id:"secu",nom:"Sécurité",role:"Security Engineer",zone:"qual",d:[4.9,10.3],col:"#B91C1C",resp:"Contrôles et risques de sécurité. Droit de blocage sur toute demande de fusion, que seul vous pouvez lever.",missions:["Rapport d'audit","Vulnérabilités classées","Avis de revue"],limites:"Lecture seule ; aucun test d'intrusion sur un système tiers.",look:{peau:1,haut:"#151719",veste:1,bas:"#151719",ch:"chignon",lun:1}},
- {id:"doc",nom:"Documentation",role:"Documentation & Knowledge Manager",zone:"qual",d:[0.8,13.5],col:"#15803D",resp:"Documentation et mémoire du bureau : fiches produits, journal, tableau de bord.",missions:["Fiches à jour","Journal des changements","Tableau de bord"],limites:"Aucun code ; aucune suppression d'historique.",look:{peau:0,haut:"#15803D",bas:"#151719",ch:"afro"}}
+ {id:"cto",nom:"AI CTO",role:"Coordination et arbitrages",zone:"dir",d:[13,3.6],o:2,debout:1,col:"#20242A",resp:"Qualifie vos demandes, établit le plan, délègue, contrôle la cohérence, prépare vos décisions et vous rend compte. Unique interlocuteur du propriétaire.",missions:["Fiche et plan de chaque mission","Demandes d'approbation","Compte rendu de fin de mission","Rapport hebdomadaire"],limites:"Ne code pas dans les produits, ne fusionne rien, ne déploie rien, n'approuve jamais à votre place.",look:{peau:1,haut:"#20242A",veste:1,bas:"#151719",ch:"court",lun:1,cravate:"#2563EB"}},
+ {id:"pm",nom:"Produit",role:"Product Manager",zone:"prod",d:[1.2,1.6],o:3,col:"#2563EB",resp:"Transforme une demande en besoin précis, priorisé et vérifiable.",missions:["Fiche besoin et critères d'acceptation","Note de priorisation"],limites:"Aucune décision commerciale ou tarifaire.",look:{peau:3,haut:"#F1EFE9",bas:"#151719",ch:"afro"}},
+ {id:"ux",nom:"Design",role:"UX/UI Designer",zone:"prod",d:[3.6,1.4],o:1,col:"#0E7490",resp:"Des parcours simples et des écrans fidèles à la charte de chaque marque, d'abord sur téléphone.",missions:["Maquettes et prototypes","Liste des écrans","Notes d'accessibilité"],limites:"Aucune logique métier ; aucune dépendance sans avis de l'Architecte et votre accord écrit.",look:{peau:2,haut:"#0E7490",bas:"#F1EFE9",ch:"chignon"}},
+ {id:"archi",nom:"Architecte",role:"Software Architect",zone:"prod",d:[3.2,4.4],o:0,col:"#3A3F47",resp:"Des choix techniques durables et cohérents d'un produit à l'autre.",missions:["Note de conception","Décisions d'architecture","Schéma de données","Avis sur les dépendances"],limites:"Ne réalise pas la fonctionnalité ; aucune dépendance payante sans votre accord.",look:{peau:0,haut:"#3A3F47",veste:1,bas:"#3A3F47",ch:"court",barbe:1}},
+ {id:"lead",nom:"Dev",role:"Lead Developer",zone:"inge",d:[16,1.4],o:1,col:"#1D4ED8",resp:"Réalise les changements de code sur une branche agent/, avec leurs tests.",missions:["Branche et lien de comparaison","Tests unitaires","Note de version"],limites:"Ne pousse jamais sur main, ne fusionne pas, ne déploie pas, ne lit aucun secret.",look:{peau:1,haut:"#151719",bas:"#151719",ch:"court",casque:"#2563EB"}},
+ {id:"maint",nom:"Maintenance",role:"Maintenance Engineer",zone:"inge",d:[16.6,4.4],o:0,col:"#4D7C0F",resp:"Maintenance, incidents et évolutions : correctifs, mises à jour préparées sur branche, analyse des incidents.",missions:["Demandes de maintenance groupées","Rapport d'incident"],limites:"Aucune nouvelle fonctionnalité ; toute intégration de mise à jour exige votre accord écrit.",look:{peau:4,haut:"#F1EFE9",bas:"#20242A",ch:"court"}},
+ {id:"devops",nom:"DevOps",role:"DevOps Engineer",zone:"inge",d:[19.4,2.2],o:2,col:"#5B616B",resp:"Environnements et opérations techniques autorisées : aperçus, sauvegardes, liste de contrôle avant mise en ligne.",missions:["Pipelines","Liste de contrôle de mise en production","Procédure de restauration"],limites:"Aucune action sur la production ; tout fichier de CI est N2.",look:{peau:2,haut:"#20242A",bas:"#5B616B",ch:"court",lun:1}},
+ {id:"qa",nom:"QA",role:"QA Engineer",zone:"qual",d:[1.4,9.6],o:3,col:"#7C3AED",resp:"Tests, qualité et anomalies : prouve que le changement fonctionne et que rien n'a cassé.",missions:["Plan de test","Rapport de recette critère par critère"],limites:"Ne modifie jamais le code applicatif pour faire passer un test.",look:{peau:3,haut:"#F1EFE9",veste:1,bas:"#151719",ch:"afro"}},
+ {id:"secu",nom:"Sécurité",role:"Security Engineer",zone:"qual",d:[4.2,12.6],o:0,col:"#B91C1C",resp:"Contrôles et risques de sécurité. Droit de blocage sur toute demande de fusion, que seul vous pouvez lever.",missions:["Rapport d'audit","Vulnérabilités classées","Avis de revue"],limites:"Lecture seule ; aucun test d'intrusion sur un système tiers.",look:{peau:1,haut:"#151719",veste:1,bas:"#151719",ch:"chignon",lun:1}},
+ {id:"doc",nom:"Documentation",role:"Documentation & Knowledge Manager",zone:"qual",d:[1.4,12.8],o:3,col:"#15803D",resp:"Documentation et mémoire du bureau : fiches produits, journal, tableau de bord.",missions:["Fiches à jour","Journal des changements","Tableau de bord"],limites:"Aucun code ; aucune suppression d'historique.",look:{peau:0,haut:"#15803D",bas:"#151719",ch:"afro"}}
 ];
 const ST_A={disponible:["Disponible","var(--dispo)","#1F8A4C",""],en_mission:["En mission","var(--mission)","#2563EB","▶"],en_attente:["En attente","var(--attente)","#B86E00","…"],bloque:["Bloqué","var(--bloque)","#C62828","!"],indisponible:["Indisponible","var(--indispo)","#8A8F97","–"]};
 const ST_M={a_examiner:["À examiner","var(--examen)"],attente_approbation:["En attente d'approbation","var(--attente)"],autorisee:["Autorisée","#0E7490"],en_cours:["En cours","var(--mission)"],terminee:["Terminée","var(--dispo)"],bloquee:["Bloquée","var(--bloque)"],refusee:["Refusée","var(--indispo)"]};
@@ -39,64 +40,133 @@ const VERIF={valide:["Signée","var(--dispo)"],historique:["Historique, non sign
 const enAttente=d=>d.statut==="en_attente"||d.statut==="historique";
 const statutAgent=id=>{const a=ETAT.agents[id];return a&&ST_A[a.statut]?a.statut:null};
 
-/* ---------- moteur isométrique ---------- */
+/* ---------- moteur isométrique : open space « plateau flottant » (M-007, repris de references/bureau-v4.html) ---------- */
 const scene=$("scene"),cv=$("cv"),ctx=cv.getContext("2d"),calque=$("calque");
-const LW=1220,LH=760,TX=29,TY=14.5,HZ=46,OX=500,OY=150;
+const LW=1180,LH=800,TX=29,TY=14.5,HZ=46,OX=520,OY=150;
 const P=(x,z,y=0)=>[OX+(x-z)*TX,OY+(x+z)*TY-y*HZ];
-const C={floor:"#ECEAE4",metal:"#1E2126",screen:"#20242A",paper:"#FFFFFF",oakT:"#DCC6A1",oakS:"#C9AF86",oakS2:"#B99C72",chairT:"#3A3F47",chairS:"#2B3036",wallL:"#F6F5F1",wallR:"#EDEBE5",win:"#DFE8F1",glass:"rgba(200,218,236,.28)",glassLine:"rgba(21,23,25,.45)",plantA:"#6E8F73",plantB:"#7FA286",pot:"#151719",line:"rgba(21,23,25,.06)",shadow:"rgba(21,23,25,.16)"};
+const C={slabT:"#EEF4FA",slabL:"#C9DCEC",slabR:"#B4CDE3",deskT:"#F7FAFD",deskL:"#DCE8F3",deskR:"#C8DAEA",bezel:"#1E2733",screen:"#CFE4F5",eteint:"#2B3A4B",chair:"#3F4D60",chairD:"#2E3A4A",chairL:"#56657A",metal:"#5B6878",potW:"#F4F7FA",potO:"#E07A4F",leaf:"#4F8A72",leaf2:"#6FA88E",shadow:"rgba(40,70,110,.18)",wall:"#F7FAFD",wallS:"#DCE8F3",polo:"#4F8FCC",trous:"#2B3442",paper:"#FFFFFF",wood:"#E9DCC4"};
 function poly(p,f,st){ctx.beginPath();p.forEach((q,i)=>i?ctx.lineTo(q[0],q[1]):ctx.moveTo(q[0],q[1]));ctx.closePath();if(f){ctx.fillStyle=f;ctx.fill()}if(st){ctx.strokeStyle=st;ctx.lineWidth=1;ctx.stroke()}}
 function box(x,z,y,w,d,h,t,l,r){poly([P(x,z+d,y),P(x+w,z+d,y),P(x+w,z+d,y+h),P(x,z+d,y+h)],l);poly([P(x+w,z,y),P(x+w,z+d,y),P(x+w,z+d,y+h),P(x+w,z,y+h)],r);poly([P(x,z,y+h),P(x+w,z,y+h),P(x+w,z+d,y+h),P(x,z+d,y+h)],t)}
-function dalle(x,z,w,d,c){poly([P(x,z),P(x+w,z),P(x+w,z+d),P(x,z+d)],c)}
-const W=24,D=16,H=3;
-function decor(){
-  dalle(0,0,W,D,C.floor);for(const zn of ZONES)dalle(zn.x,zn.z,zn.w,zn.d,zn.c);
-  ctx.strokeStyle=C.line;ctx.lineWidth=1;
-  for(let i=2;i<W;i+=2){const a=P(i,0),b=P(i,D);ctx.beginPath();ctx.moveTo(a[0],a[1]);ctx.lineTo(b[0],b[1]);ctx.stroke()}
-  for(let j=2;j<D;j+=2){const a=P(0,j),b=P(W,j);ctx.beginPath();ctx.moveTo(a[0],a[1]);ctx.lineTo(b[0],b[1]);ctx.stroke()}
-  for(const zn of ZONES){if(zn.id==="dir")continue;const[sx,sy]=P(zn.tx,zn.tz);ctx.save();ctx.translate(sx,sy);ctx.transform(1,.5,-1,.5,0,0);ctx.font="700 13px 'Inter Tight', Arial";ctx.fillStyle="#20242A";ctx.globalAlpha=.6;ctx.fillText(zn.nom.toUpperCase(),0,0);ctx.restore()}
-  poly([P(0,0,0),P(W,0,0),P(W,0,H),P(0,0,H)],C.wallL);poly([P(0,0,0),P(0,D,0),P(0,D,H),P(0,0,H)],C.wallR);
-  poly([P(0,0,H),P(W,0,H),P(W,-.25,H),P(-.25,-.25,H),P(-.25,D,H),P(0,D,H)],"#151719");
-  for(const[a,b]of[[1,8],[16.5,23.5]])for(let x=a;x<b;x+=1.5){const e=Math.min(x+1.35,b);poly([P(x,0,.9),P(e,0,.9),P(e,0,2.7),P(x,0,2.7)],C.win,"#151719")}
-  for(const[a,b]of[[1,6.6],[10,15]])for(let x=a;x<b;x+=1.5){const e=Math.min(x+1.35,b);poly([P(0,x,.9),P(0,e,.9),P(0,e,2.7),P(0,x,2.7)],C.win,"#151719")}
-}
-const siege=a=>[a.d[0]+1,a.d[1]+1.45];
-function plante(x,z,k=1){box(x,z,0,.42*k,.42*k,.45*k,C.pot,"#20242A","#20242A");const[cx,cy]=P(x+.21*k,z+.21*k,.8*k);ctx.fillStyle=C.plantA;ctx.beginPath();ctx.arc(cx,cy,15*k,0,7);ctx.fill();ctx.fillStyle=C.plantB;ctx.beginPath();ctx.arc(cx-5*k,cy-6*k,9*k,0,7);ctx.fill()}
-function vitre(x1,z1,x2,z2){poly([P(x1,z1,0),P(x2,z2,0),P(x2,z2,2.4),P(x1,z1,2.4)],C.glass,C.glassLine)}
+function dalle(x,z,w,d,c,st){poly([P(x,z),P(x+w,z),P(x+w,z+d),P(x,z+d)],c,st)}
+function ombre(x,z,rx,ry){const[sx,sy]=P(x,z);ctx.fillStyle=C.shadow;ctx.beginPath();ctx.ellipse(sx,sy,rx,ry,0,0,7);ctx.fill()}
+function texteSol(t,x,z){const[sx,sy]=P(x,z);ctx.save();ctx.translate(sx,sy);ctx.transform(1,.5,-1,.5,0,0);ctx.font="700 12px 'Inter Tight', Arial";ctx.fillStyle="#3A5A7A";ctx.globalAlpha=.55;ctx.fillText(t,0,0);ctx.restore()}
 function rr(x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath()}
-function poste(a){
-  const[x,z]=a.d;const st=statutAgent(a.id);
-  box(x+.08,z+.1,0,.06,.8,.72,C.metal,C.metal,C.metal);box(x+1.86,z+.1,0,.06,.8,.72,C.metal,C.metal,C.metal);
-  box(x,z,.72,2,1,.07,C.oakT,C.oakS,C.oakS2);
-  box(x+.55,z+.18,.79,.9,.06,.55,C.screen,st==="en_mission"?"#2563EB":st==="bloque"?"#C62828":C.screen,C.screen);
-  box(x+1.3,z+.55,.79,.32,.22,.02,C.paper,C.paper,C.paper);
-}
-function chaise(a){const[sx,sz]=siege(a);box(sx-.25,sz-.2,.42,.5,.45,.08,C.chairT,C.chairS,C.chairS);box(sx-.03,sz-.02,0,.06,.06,.42,C.metal,C.metal,C.metal)}
-function personne(a){
-  const st=statutAgent(a.id);if(st==="indisponible")return;
-  const L=a.look,peau=PEAU[L.peau||0];const[sx0,sz0]=siege(a);const[x,y0]=P(sx0,sz0,0);const y=y0-14;
-  ctx.save();ctx.translate(x,y);if(!st)ctx.globalAlpha=.55;
-  ctx.fillStyle=C.shadow;ctx.beginPath();ctx.ellipse(0,14,11,4.5,0,0,7);ctx.fill();
-  const ty=-40,vest=L.haut;ctx.fillStyle=vest;rr(-8,ty,16,21,4);ctx.fill();
-  if(L.veste){ctx.fillStyle="#F1EFE9";ctx.beginPath();ctx.moveTo(-2.5,ty);ctx.lineTo(2.5,ty);ctx.lineTo(0,ty+9);ctx.closePath();ctx.fill()}
-  if(L.cravate){ctx.fillStyle=L.cravate;ctx.fillRect(-1,ty+2,2,9)}
-  if(L.casque){ctx.strokeStyle=L.casque;ctx.lineWidth=2.4;ctx.beginPath();ctx.ellipse(0,ty+1,6.5,2.8,0,0,7);ctx.stroke()}
-  ctx.lineCap="round";const bras=(x1,y1,x2,y2)=>{ctx.strokeStyle=vest;ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();ctx.fillStyle=peau;ctx.beginPath();ctx.arc(x2,y2,2.4,0,7);ctx.fill()};
-  bras(-7,ty+4,-6,ty+16);bras(7,ty+4,6,ty+16);
-  const hy=ty-9;ctx.fillStyle=peau;ctx.fillRect(-2,ty-3,4,4);ctx.beginPath();ctx.arc(0,hy,7.5,0,7);ctx.fill();
-  ctx.fillStyle="#141210";ctx.beginPath();ctx.arc(0,hy,L.ch==="afro"?9.5:7.6,0,7);ctx.fill();if(L.ch==="chignon"){ctx.beginPath();ctx.arc(0,hy-8,3.6,0,7);ctx.fill()}
+const W=22,D=16,H=2.6;
+// écran « PROJETS EN COURS » : produits des missions actives lues dans etat/missions.json (jusqu'à 3, sans doublon)
+const ACTIVES=["en_cours","autorisee","a_examiner","attente_approbation"];
+function projetsActifs(){const vus=new Set(),out=[];for(const m of ETAT.missions){if(!m||!ACTIVES.includes(m.statut))continue;const n=s(m.produit).trim().slice(0,60);const cle=n?n.toLowerCase():"";if(vus.has(cle))continue;vus.add(cle);out.push(n||null);if(out.length===3)break}return out}
+function ajuster(t,max){if(ctx.measureText(t).width<=max)return t;while(t.length>1&&ctx.measureText(t+"…").width>max)t=t.slice(0,-1);return t+"…"}
+function ecranProjets(){
+  const[tx0,ty0]=P(8.1,.25,2.0);ctx.save();ctx.translate(tx0,ty0);ctx.transform(1,.5,0,1,0,0);
+  ctx.fillStyle="#8EC5D6";ctx.font="700 11px Inter, Arial";ctx.fillText("PROJETS EN COURS",0,0);
+  const msg=t=>{ctx.fillStyle="#CFE4F5";ctx.font="600 16px 'Inter Tight', Arial";ctx.fillText(t,0,30)};
+  const pr=projetsActifs();
+  if(!charge)msg(enErreur?"Non connecté":"Lecture de la mémoire…");
+  else if(!pr.length)msg("Aucun projet actif");
+  else{const tr=pr.length>2,lh=tr?13.5:18;
+    pr.forEach((n,i)=>{const y=4+lh*(i+1);ctx.fillStyle="#E07A4F";ctx.beginPath();ctx.arc(5,y-(tr?4:5),tr?3.5:4.5,0,7);ctx.fill();
+      ctx.font=(n?"800 ":"italic 600 ")+(tr?12:14)+"px 'Inter Tight', Arial";ctx.fillStyle=n?"#FFFFFF":"#CFE4F5";ctx.fillText(ajuster(n?n.toUpperCase():"Non renseigné",172),15,y)})}
   ctx.restore();
 }
+function decor(){
+  // ombre portée et dalle flottante
+  poly([P(.6,1.2,-.9),P(W+.6,1.2,-.9),P(W+.6,D+1.2,-.9),P(.6,D+1.2,-.9)],"rgba(60,100,150,.08)");
+  box(0,0,-.4,W,D,.4,C.slabT,C.slabL,C.slabR);
+  ctx.strokeStyle="rgba(120,160,200,.18)";ctx.lineWidth=1;
+  for(let i=2;i<W;i+=2){const a=P(i,0),b=P(i,D);ctx.beginPath();ctx.moveTo(a[0],a[1]);ctx.lineTo(b[0],b[1]);ctx.stroke()}
+  for(let j=2;j<D;j+=2){const a=P(0,j),b=P(W,j);ctx.beginPath();ctx.moveTo(a[0],a[1]);ctx.lineTo(b[0],b[1]);ctx.stroke()}
+  for(const zn of ZONES)dalle(zn.x,zn.z,zn.w,zn.d,zn.c);
+  for(const zn of ZONES)if(zn.tx!=null)texteSol(zn.nom.toUpperCase(),zn.tx,zn.tz);
+  // cloison du fond avec l'écran des projets
+  box(6.5,0,0,9.5,.25,H,C.wall,C.wallS,C.wallS);
+  poly([P(7.6,.25,.85),P(14.9,.25,.85),P(14.9,.25,2.35),P(7.6,.25,2.35)],C.bezel);
+  poly([P(7.75,.25,.95),P(14.75,.25,.95),P(14.75,.25,2.25),P(7.75,.25,2.25)],"#14324A");
+  ecranProjets();
+  // plinthe
+  poly([P(6.5,.25,0),P(16,.25,0),P(16,.25,.08),P(6.5,.25,.08)],"#C9DCEC");
+}
+// positions : o = direction du regard (0 vers -z, 1 vers +z, 2 vers -x, 3 vers +x)
+const siege=a=>{if(a.debout)return a.d;const[x,z]=a.d;return [[x+.8,z+1.3],[x+.8,z-.5],[x+1.3,z+.8],[x-.5,z+.8]][a.o]};
+// couleur d'écran d'un poste, d'après le statut enregistré : bleu = en mission, rouge = bloqué,
+// éteint = poste inoccupé, agent indisponible ou statut non renseigné ; sinon écran clair
+function couleurEcran(st){return st==="en_mission"?"#2563EB":st==="bloque"?"#C62828":(!st||st==="indisponible")?C.eteint:null}
+function bureauNu(x,z,o,st){
+  const wz=o<2,w=wz?1.6:.8,d=wz?.8:1.6;
+  dalle(x+.06,z+.1,w,d,"rgba(40,70,110,.10)");
+  // panneaux latéraux
+  if(wz){box(x,z,0,.06,d,.74,C.deskL,C.deskL,C.deskR);box(x+w-.06,z,0,.06,d,.74,C.deskL,C.deskL,C.deskR)}
+  else{box(x,z,0,w,.06,.74,C.deskL,C.deskL,C.deskR);box(x,z+d-.06,0,w,.06,.74,C.deskL,C.deskL,C.deskR)}
+  box(x,z,.74,w,d,.05,C.deskT,C.deskL,C.deskR);
+  const ec=couleurEcran(st);
+  // écran sur pied
+  if(o===0){box(x+.72,z+.12,.79,.16,.12,.02,C.metal,C.metal,C.metal);box(x+.77,z+.16,.79,.06,.05,.28,C.metal,C.metal,C.metal);box(x+.25,z+.12,1.0,1.1,.05,.6,C.bezel,C.bezel,C.bezel);dalleEcranZ(x+.3,z+.17,1.04,1.0,.52,ec)}
+  if(o===1){box(x+.72,z+.56,.79,.16,.12,.02,C.metal,C.metal,C.metal);box(x+.77,z+.6,.79,.06,.05,.28,C.metal,C.metal,C.metal);box(x+.25,z+.62,1.0,1.1,.05,.6,C.bezel,C.bezel,C.bezel)}
+  if(o===2){box(x+.12,z+.72,.79,.12,.16,.02,C.metal,C.metal,C.metal);box(x+.16,z+.77,.79,.05,.06,.28,C.metal,C.metal,C.metal);box(x+.12,z+.25,1.0,.05,1.1,.6,C.bezel,C.bezel,C.bezel);dalleEcranX(x+.17,z+.3,1.04,1.0,.52,ec)}
+  if(o===3){box(x+.56,z+.72,.79,.12,.16,.02,C.metal,C.metal,C.metal);box(x+.6,z+.77,.79,.05,.06,.28,C.metal,C.metal,C.metal);box(x+.62,z+.25,1.0,.05,1.1,.6,C.bezel,C.bezel,C.bezel)}
+  // clavier, souris, tasse
+  if(wz){const kz=o===0?z+.45:z+.22;box(x+.45,kz,.79,.7,.18,.02,"#E4ECF4","#C8D6E4","#C8D6E4");box(x+1.25,kz+.02,.79,.08,.12,.02,"#E4ECF4","#C8D6E4","#C8D6E4");box(o===0?x+.1:x+1.4,o===0?z+.5:z+.2,.79,.1,.1,.1,"#FFFFFF","#E6EEF6","#D5E1EC")}
+  else{const kx=o===2?x+.45:x+.15;box(kx,z+.45,.79,.18,.7,.02,"#E4ECF4","#C8D6E4","#C8D6E4");box(kx+.02,z+1.25,.79,.12,.08,.02,"#E4ECF4","#C8D6E4","#C8D6E4");box(o===2?x+.5:x+.2,o===2?z+.1:z+1.4,.79,.1,.1,.1,"#FFFFFF","#E6EEF6","#D5E1EC")}
+}
+function lignesEcran(a,b){ctx.beginPath();ctx.moveTo(a[0],a[1]);ctx.lineTo(b[0],b[1]);ctx.stroke()}
+function dalleEcranZ(x,z,y,w,h,ec){poly([P(x,z,y),P(x+w,z,y),P(x+w,z,y+h),P(x,z,y+h)],ec||C.screen);if(!ec){ctx.strokeStyle="rgba(30,60,100,.35)";ctx.lineWidth=1.2;for(let i=1;i<5;i++)lignesEcran(P(x+.08,z,y+h-i*.1),P(x+.08+w*(i%2?.7:.45),z,y+h-i*.1))}}
+function dalleEcranX(x,z,y,d,h,ec){poly([P(x,z,y),P(x,z+d,y),P(x,z+d,y+h),P(x,z,y+h)],ec||C.screen);if(!ec){ctx.strokeStyle="rgba(30,60,100,.35)";ctx.lineWidth=1.2;for(let i=1;i<5;i++)lignesEcran(P(x,z+.08,y+h-i*.1),P(x,z+.08+d*(i%2?.7:.45),y+h-i*.1))}}
+function poste(a){if(!a.debout)bureauNu(a.d[0],a.d[1],a.o,statutAgent(a.id))}
+// fauteuil à roulettes : piètement étoile, assise, dossier
+const DIRS=[[0,-1],[0,1],[-1,0],[1,0]];
+function pietement(sx,sz){const[cx,cy]=P(sx,sz,.05);ctx.strokeStyle=C.chairD;ctx.lineWidth=3;ctx.lineCap="round";for(let i=0;i<5;i++){const ang=i*2*Math.PI/5+.3;const dx=Math.cos(ang)*13,dy=Math.sin(ang)*6.5;ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(cx+dx,cy+dy);ctx.stroke();ctx.fillStyle="#1C232D";ctx.beginPath();ctx.arc(cx+dx,cy+dy+1.5,2.2,0,7);ctx.fill()}box(sx-.03,sz-.03,.05,.06,.06,.36,C.metal,C.metal,C.metal)}
+function assise(sx,sz){box(sx-.24,sz-.24,.41,.48,.48,.07,C.chairL,C.chair,C.chairD)}
+function dossier(sx,sz,o){const[dx,dz]=DIRS[o];const bx=sx-dx*.26,bz=sz-dz*.26;if(o<2)box(bx-.23,bz-.03,.5,.46,.06,.62,C.chairL,C.chair,C.chairD);else box(bx-.03,bz-.23,.5,.06,.46,.62,C.chairL,C.chair,C.chairD)}
+function chaiseVide(sx,sz,o){ombre(sx,sz,12,5);pietement(sx,sz);assise(sx,sz);dossier(sx,sz,o)}
+function chaise(a){if(a.debout)return;const[sx,sz]=siege(a);ombre(sx,sz,12,5);pietement(sx,sz);assise(sx,sz)}
+// silhouette assise (de face ou de dos) ou debout ; bulle de statut d'après etat/agents.json
+function personne(a){
+  const st=statutAgent(a.id);const[sx,sz]=siege(a);
+  if(st==="indisponible"){if(!a.debout)dossier(sx,sz,a.o);return}
+  const L=a.look,peau=PEAU[L.peau||0];const face=a.o===1||a.o===3;const sens=[1,-1,-1,1][a.o];
+  const haut=a.id==="cto"?"#2A2F36":C.polo;
+  if(!a.debout&&face)dossier(sx,sz,a.o);
+  const base=a.debout?0:.48;const[x,y]=P(sx,sz,base);
+  ctx.save();ctx.translate(x,y);ctx.scale(sens,1);if(!st)ctx.globalAlpha=.55;
+  ctx.lineCap="round";ctx.lineJoin="round";
+  if(a.debout){ctx.fillStyle=C.shadow;ctx.beginPath();ctx.ellipse(0,2,12,5,0,0,7);ctx.fill();
+    ctx.strokeStyle=C.trous;ctx.lineWidth=6;ctx.beginPath();ctx.moveTo(-3,-30);ctx.lineTo(-4,0);ctx.moveTo(3,-30);ctx.lineTo(4,0);ctx.stroke();
+    ctx.fillStyle="#111";ctx.fillRect(-8,-1,6,3);ctx.fillRect(2,-1,6,3)}
+  else if(face){ctx.strokeStyle=C.trous;ctx.lineWidth=6.5;ctx.beginPath();ctx.moveTo(-3,-4);ctx.lineTo(9,2);ctx.lineTo(9,20);ctx.moveTo(3,-4);ctx.lineTo(14,1);ctx.lineTo(15,19);ctx.stroke();ctx.fillStyle="#111";ctx.fillRect(7,19,7,3);ctx.fillRect(13,18,7,3)}
+  const tY=a.debout?-30:-2;const ty=tY-24;
+  ctx.fillStyle=haut;rr(-8.5,ty,17,26,5);ctx.fill();
+  if(a.id==="cto"){ctx.fillStyle="#F1EFE9";ctx.beginPath();ctx.moveTo(-3,ty);ctx.lineTo(3,ty);ctx.lineTo(0,ty+10);ctx.closePath();ctx.fill();ctx.fillStyle="#2563EB";ctx.fillRect(-1,ty+3,2,10)}
+  else if(face){ctx.fillStyle="rgba(255,255,255,.35)";ctx.beginPath();ctx.moveTo(-3,ty);ctx.lineTo(3,ty);ctx.lineTo(0,ty+6);ctx.closePath();ctx.fill()}
+  // bras vers le clavier
+  const bras=(x1,y1,x2,y2)=>{ctx.strokeStyle=haut;ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();ctx.strokeStyle=peau;ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(x2,y2);ctx.lineTo(x2+(face?5:4),y2+(face?4:-3));ctx.stroke()};
+  if(a.debout){bras(-8,ty+4,-10,ty+24);bras(8,ty+4,11,ty+22)}
+  else if(face){bras(-8,ty+5,-4,ty+18);bras(8,ty+5,12,ty+16)}
+  else{bras(-8,ty+5,-2,ty+12);bras(8,ty+5,13,ty+8)}
+  // tête
+  const hy=ty-9;ctx.fillStyle=peau;ctx.fillRect(-2.5,ty-4,5,5);ctx.beginPath();ctx.ellipse(0,hy,7,8,0,0,7);ctx.fill();
+  ctx.fillStyle="#141210";
+  if(face){ctx.beginPath();ctx.ellipse(0,hy-3.5,L.ch==="afro"?9:7.4,L.ch==="afro"?7:5,0,Math.PI,0);ctx.fill();if(L.ch==="chignon"){ctx.beginPath();ctx.arc(-1,hy-9,3.5,0,7);ctx.fill()}
+    ctx.beginPath();ctx.arc(2.2,hy,.95,0,7);ctx.arc(-2.6,hy,.95,0,7);ctx.fill();
+    if(L.lun){ctx.strokeStyle="#141210";ctx.lineWidth=.8;ctx.strokeRect(-4.8,hy-1.4,3.8,2.8);ctx.strokeRect(.4,hy-1.4,3.8,2.8)}
+    if(L.barbe){ctx.beginPath();ctx.arc(0,hy+3.6,4.6,0,Math.PI);ctx.fill()}}
+  else{ctx.beginPath();ctx.ellipse(0,hy-1,L.ch==="afro"?9:7.4,L.ch==="afro"?9:8,0,0,7);ctx.fill();if(L.ch==="chignon"){ctx.beginPath();ctx.arc(0,hy-8,3.5,0,7);ctx.fill()}}
+  if(L.casque){ctx.strokeStyle="#2563EB";ctx.lineWidth=2.2;ctx.beginPath();ctx.arc(0,hy,9,Math.PI,0);ctx.stroke()}
+  ctx.restore();
+  if(!a.debout&&!face)dossier(sx,sz,a.o);
+  // bulle de statut (comme une notification), seulement si le statut est enregistré
+  const v=ST_A[st];if(v){const[bx,by]=P(sx,sz,a.debout?1.95:1.62);ctx.save();ctx.fillStyle=v[2];rr(bx+9,by-14,18,16,4);ctx.fill();ctx.beginPath();ctx.moveTo(bx+12,by+2);ctx.lineTo(bx+16,by+2);ctx.lineTo(bx+11,by+6);ctx.closePath();ctx.fill();ctx.fillStyle="#fff";ctx.font="800 10px Inter, Arial";ctx.textAlign="center";ctx.fillText(v[3]||"✓",bx+18,by-2.5);ctx.restore()}
+}
+function plante(x,z,k=1,orange){const pot=orange?C.potO:C.potW;ombre(x+.2*k,z+.2*k,10*k,5*k);box(x,z,0,.4*k,.4*k,.42*k,pot,orange?"#C9673F":"#DCE6EE",orange?"#B85C37":"#C9D6E2");const[cx,cy]=P(x+.2*k,z+.2*k,.45*k);ctx.lineWidth=1.4;for(let i=0;i<9;i++){const ang=-Math.PI/2+(i-4)*.28;const L=(22+(i%3)*7)*k;const ex=cx+Math.cos(ang)*L*.75,ey=cy+Math.sin(ang)*L;ctx.fillStyle=i%2?C.leaf:C.leaf2;ctx.beginPath();ctx.moveTo(cx,cy);ctx.quadraticCurveTo((cx+ex)/2+5*k*Math.cos(ang+1.4),(cy+ey)/2,ex,ey);ctx.quadraticCurveTo((cx+ex)/2-5*k*Math.cos(ang+1.4),(cy+ey)/2,cx,cy);ctx.fill()}}
+function tableRonde(cx,cz,r){ombre(cx,cz,r*40,r*20);const[x,y]=P(cx,cz,.74);box(cx-.05,cz-.05,0,.1,.1,.74,C.metal,C.metal,C.metal);ctx.fillStyle=C.deskL;ctx.beginPath();ctx.ellipse(x,y+3,r*TX*1.42,r*TY*1.42,0,0,7);ctx.fill();ctx.fillStyle=C.deskT;ctx.beginPath();ctx.ellipse(x,y,r*TX*1.42,r*TY*1.42,0,0,7);ctx.fill()}
 function dessinerScene(){
   decor();
-  // direction : bureau du propriétaire et vitres
-  box(10.85,2.2,0,.08,1.1,.72,C.metal,C.metal,C.metal);box(13.97,2.2,0,.08,1.1,.72,C.metal,C.metal,C.metal);box(10.8,2.1,.72,3.3,1.3,.08,"#2B3036","#20242A","#151719");box(11.9,2.25,.8,1.1,.06,.6,C.screen,C.screen,C.screen);
-  box(12.15,3.85,.45,.6,.55,.1,"#151719","#151719","#151719");box(12.15,4.3,.55,.6,.1,.8,"#151719","#151719","#151719");
-  vitre(9,.2,9,6);vitre(15,.2,15,6);vitre(9,6,11.6,6);vitre(12.8,6,15,6);
-  // salle de réunion et bibliothèque (décor fixe)
-  box(10,11.3,.72,3,1.6,.08,C.oakT,C.oakS,C.oakS2);box(10.2,11.4,0,.08,1.4,.72,C.metal,C.metal,C.metal);box(12.72,11.4,0,.08,1.4,.72,C.metal,C.metal,C.metal);
-  box(.05,8.0,0,.45,1.4,1.9,C.oakT,C.oakS,C.oakS2);
-  [[8.2,.4,1.2],[15.4,.45,1],[23.4,.45,1.2],[8.3,6.4,.9],[23.4,15.4,1.3],[15.8,10.3,.9],[8.6,15.3,1],[20.5,12.5,1.1]].forEach(([x,z,k])=>plante(x,z,k));
-  const objs=[];for(const a of EQUIPE){objs.push({k:a.d[0]+a.d[1]+1.5,f:()=>poste(a)},{k:siege(a)[0]+siege(a)[1]-.4,f:()=>chaise(a)},{k:siege(a)[0]+siege(a)[1]+.1,f:()=>personne(a)})}
+  const objs=[];const add=(k,f)=>objs.push({k,f});
+  for(const a of EQUIPE){const[sx,sz]=siege(a);if(!a.debout){const[x,z]=a.d;const c=a.o<2?[x+.8,z+.4]:[x+.4,z+.8];add(c[0]+c[1],()=>poste(a));add(sx+sz-.05,()=>chaise(a))}add(sx+sz+.05,()=>personne(a))}
+  // poste du propriétaire (fauteuil vide)
+  add(10.6+2.4+1.2,()=>bureauNu(10.2,2.4,0,null));add(11+3.7-.05,()=>chaiseVide(11,3.7,0));
+  for(const[x,z,o]of LIBRES){const c=o<2?[x+.8,z+.4]:[x+.4,z+.8];add(c[0]+c[1],()=>bureauNu(x,z,o,null));const q=[[x+.8,z+1.3],[x+.8,z-.5],[x+1.3,z+.8],[x-.5,z+.8]][o];add(q[0]+q[1]-.05,()=>chaiseVide(q[0],q[1],o))}
+  add(11.5+11,()=>tableRonde(11.5,11,1.15));
+  [[10.2,11],[12.8,11],[11.5,9.7],[11.5,12.3]].forEach(([x,z],i)=>add(x+z+(i%2?.3:-.3),()=>chaiseVide(x,z,[3,2,1,0][i])));
+  [[.5,.5,1.2,0],[6.6,6.4,1,1],[14.2,.8,1.1,0],[21,.6,1.2,1],[.6,15,1.1,1],[8.6,14.6,1,0],[14.8,7.6,1.3,0],[21,14.8,1.2,1],[17.6,12.2,.9,1]].forEach(([x,z,k,o])=>add(x+z+.4,()=>plante(x,z,k,!!o)));
   objs.sort((p,q)=>p.k-q.k).forEach(o=>o.f());
 }
 /* vue : zoom et déplacement */
@@ -115,13 +185,19 @@ const YAN=el("button",{type:"button",class:"zone",style:"background:#151719;colo
 function placer(){
   calque.classList.toggle("compact",vue.s<.62);
   const fixes=[];const pose=(n,x,y,centre)=>{const w=n.offsetWidth,hh=n.offsetHeight;if(!w)return;let l=centre?x-w/2:x,t=y;l=Math.max(4,Math.min(CW-w-(CW<600?56:4),l));n.style.transform=`translate(${Math.round(l)}px,${Math.round(t)}px)`;fixes.push({left:l,top:t,w,h:hh})};
-  {const[x,y]=versEcran(P(13.6,4.6,0));pose(YAN,x,y,true)}
+  {const[x,y]=versEcran(P(11,4.2,0));pose(YAN,x,y+4,true)}
   const boxes=[];
   for(const a of EQUIPE){const[sx,sz]=siege(a);const[x,y]=versEcran(P(sx,sz,0));const n=ETQ[a.id];const w=n.offsetWidth,hh=n.offsetHeight;if(!w)continue;
-    boxes.push({n,left:Math.max(4,Math.min(CW-w-(CW<600?56:4),x-w/2)),top:y-62*vue.s-hh,w,h:hh})}
+    const yb=versEcran(P(sx,sz,a.debout?1.95:1.62))[1];boxes.push({n,left:Math.max(4,Math.min(CW-w-(CW<600?56:4),x-w/2)),top:yb-16*vue.s-hh,bas:y+8*vue.s,w,h:hh})}
   boxes.sort((p,q)=>q.top-p.top);const places=[];
   const chev=(A,B)=>A.left<B.left+B.w+3&&B.left<A.left+A.w+3&&A.top<B.top+B.h+3&&B.top<A.top+A.h+3;
-  for(const A of boxes){for(let k=0;k<12;k++){const c=fixes.concat(places).find(B=>chev(A,B));if(!c)break;A.top=c.top-A.h-3}places.push(A);A.n.style.transform=`translate(${Math.round(A.left)}px,${Math.round(A.top)}px)`}
+  // écran mural des projets (bords verticaux, haut et bas en pente 1/2 à l'écran) : les étiquettes l'évitent si possible
+  const[e0x,e0h]=versEcran(P(7.6,.25,2.35)),e1x=versEcran(P(14.9,.25,2.35))[0],e0b=versEcran(P(7.6,.25,.85))[1];
+  const surEcran=A=>{const l=Math.max(A.left,e0x),r=Math.min(A.left+A.w,e1x);return l<=r&&e0h+.5*(l-e0x)<A.top+A.h+3&&e0b+.5*(r-e0x)>A.top-3};
+  // essai : au-dessus de la bulle (en remontant), sinon sous l'agent (en descendant), sinon comme avant (en remontant)
+  const essai=(A,t0,sens,ecran)=>{A.top=t0;for(let k=0;k<12;k++){if(ecran&&surEcran(A))return false;const c=fixes.concat(places).find(B=>chev(A,B));if(!c)return sens<0||A.top+A.h<=CH-4;A.top=sens<0?c.top-A.h-3:c.top+c.h+3}return false};
+  const evite=vue.s>=.62;// en vue compacte, l'écran est illisible sans zoom : on ne l'évite pas
+  for(const A of boxes){const t0=A.top;if(!evite||(!essai(A,t0,-1,1)&&!essai(A,A.bas,1,1)))essai(A,t0,-1,0);places.push(A);A.n.style.transform=`translate(${Math.round(A.left)}px,${Math.round(A.top)}px)`}
 }
 /* interactions pointeur */
 const pts=new Map();let glisse=false,depart=null,pinch=null;
@@ -132,7 +208,7 @@ cv.addEventListener("pointermove",e=>{if(!pts.has(e.pointerId))return;pts.set(e.
   if(depart&&pts.size===1){const dx=e.offsetX-depart[0],dy=e.offsetY-depart[1];if(Math.hypot(dx,dy)>5){glisse=true;cv.classList.add("drag")}if(glisse){vue.tx=depart[2]+dx;vue.ty=depart[3]+dy;dessiner()}}});
 function fin(e){if(!pts.has(e.pointerId))return;pts.delete(e.pointerId);cv.classList.remove("drag");if(pts.size<2)pinch=null;
   if(!glisse&&e.type==="pointerup"){const wx=(e.offsetX-vue.tx)/vue.s,wy=(e.offsetY-vue.ty)/vue.s;let best=null,bd=60;
-    for(const a of EQUIPE){const[px,py]=P(a.d[0]+1,a.d[1]+1,.5);const d=Math.hypot(px-wx,py-wy);if(d<bd){bd=d;best=a}}
+    for(const a of EQUIPE){const[sxa,sza]=siege(a);const[px,py]=P(sxa,sza,.8);const d=Math.hypot(px-wx,py-wy);if(d<bd){bd=d;best=a}}
     if(best){ouvrirAgent(best.id)}else{const a=(wx-OX)/TX,b=(wy-OY)/TY,fx=(a+b)/2,fz=(b-a)/2;const zn=ZONES.find(q=>fx>=q.x&&fx<=q.x+q.w&&fz>=q.z&&fz<=q.z+q.d);if(zn){zn.id==="dir"?ouvrirDirection():ouvrirZone(zn.id)}}}
   if(!pts.size)depart=null}
 cv.addEventListener("pointerup",fin);cv.addEventListener("pointercancel",fin);
