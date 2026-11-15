@@ -124,9 +124,10 @@ function lignesJournal(plan) {
 
 export async function passage(env, { fetchFn = fetch, maintenant = () => new Date() } = {}) {
   const resume = { statut: "ok", projets: 0, nouvelles: 0, fermees: 0, reveils: 0, erreurs: 0 };
-  const jetonMemoire = env.GITHUB_TOKEN_MEMOIRE || env.GITHUB_TOKEN_ORG;
+  // Deux clés obligatoires ; aucune clé de dépôt produit ne sert jamais à la mémoire.
+  const jetonMemoire = env.GITHUB_TOKEN_MEMOIRE;
   if (typeof jetonMemoire !== "string" || !jetonMemoire) {
-    console.error("Sentinel : configuration absente, passage arrêté.");
+    console.error("Sentinel : configuration incomplète (clé mémoire absente), passage arrêté.");
     return { ...resume, statut: "configuration_absente" };
   }
   const now = maintenant();

@@ -251,7 +251,7 @@ test("clé incohérente avec le dépôt, dépôt mémoire comme produit, site en
   });
 });
 
-test("clés : mémoire = jeton mémoire ; sinon jeton org ; org et perso chacun sur leurs dépôts", async () => {
+test("clés : ORG jamais envoyé à la mémoire, MÉMOIRE jamais envoyé à un dépôt produit ; org et perso chacun sur leurs dépôts", async () => {
   await sansLogs(async () => {
     const projets = [projet(1, { site: null }), projet(2, { depot: "seedscaleup/p2", proprietaire_cle: "perso", site: null })];
     const monde = creerMonde({ projets }), h = horloge();
@@ -259,25 +259,31 @@ test("clés : mémoire = jeton mémoire ; sinon jeton org ; org et perso chacun 
     monde.depots["seedscaleup/p2"] = depotSain();
     await passer(monde, h, 2);
     const jeton = (a) => a.init.headers.Authorization.replace("Bearer ", "");
+    const versMemoire = monde.appels.filter((a) => a.url.includes("ai-tech-office-memoire"));
+    assert.ok(versMemoire.length > 0);
+    for (const a of versMemoire) assert.notEqual(jeton(a), JETONS.GITHUB_TOKEN_ORG);
+    for (const a of monde.appels.filter((x) => x.url.includes("/repos/") && !x.url.includes("ai-tech-office-memoire"))) assert.notEqual(jeton(a), JETONS.GITHUB_TOKEN_MEMOIRE);
     for (const a of monde.appels) {
       if (a.url.includes("ai-tech-office-memoire")) assert.equal(jeton(a), JETONS.GITHUB_TOKEN_MEMOIRE);
       else if (a.url.includes("seedgroup-tech/p1")) assert.equal(jeton(a), JETONS.GITHUB_TOKEN_ORG);
       else if (a.url.includes("seedscaleup/p2")) assert.equal(jeton(a), JETONS.GITHUB_TOKEN_PERSO);
     }
-    const sans = { ...ENV }; delete sans.GITHUB_TOKEN_MEMOIRE;
-    monde.appels.length = 0;
-    await passer(monde, h, 1, sans);
-    for (const a of monde.appels.filter((x) => x.url.includes("ai-tech-office-memoire"))) assert.equal(jeton(a), JETONS.GITHUB_TOKEN_ORG);
   });
 });
 
-test("configuration absente : arrêt propre, aucun appel", async () => {
-  await sansLogs(async () => {
-    const monde = mondeSimule(1), h = horloge();
-    const r = await passer(monde, h, 1, { ROUTINE_ID: "x" });
-    assert.equal(r.statut, "configuration_absente");
-    assert.equal(monde.appels.length, 0);
-  });
+test("sans GITHUB_TOKEN_MEMOIRE (même avec la clé ORG) : rien n'est fait, ni écriture ni réveil", async () => {
+  const l = capturerLogs();
+  try {
+    for (const env of [{ ROUTINE_ID: "x" }, { ...ENV, GITHUB_TOKEN_MEMOIRE: undefined }, { ...ENV, GITHUB_TOKEN_MEMOIRE: "" }]) {
+      const monde = mondeSimule(1), h = horloge();
+      monde.sites["p1.example.com"] = 500;
+      const r = await passer(monde, h, 3, env);
+      assert.equal(r.statut, "configuration_absente");
+      assert.equal(monde.appels.length, 0);
+      assert.equal(monde.routine.appels.length, 0);
+    }
+    assert.ok(l.lignes.every((x) => !Object.values(JETONS).some((s) => x.includes(s))));
+  } finally { l.restaurer(); }
 });
 
 // Monde varié pour les contrôles de sécurité.
@@ -407,7 +413,7 @@ test("fichiers trop gros : note unique et signal dans /sante", async () => {
     assert.equal(sentinel(monde).notes.filter((n) => n.cle === "sentinel|taille-alertes").length, 1);
     reinitialiserCacheSante();
     const j = await (await repondre(new Request("https://s.example/sante"), ENV, { fetchFn: monde.fetchFn, maintenant: h.maintenant })).json();
-    assert.equal(j.fichiers_trop_gros, true);
+    assert.deepEqual(j, { ok: true });
   });
 });
 
@@ -446,11 +452,9 @@ test("PIRE CAS : 20 projets, tout en panne, conflits 409 partout : jamais plus d
   });
 });
 
-test("/sante après une simulation : aucun nom de projet, aucune adresse", async () => {
+test("/sante après une simulation : seulement { ok: true }", async () => {
   const { sante } = await mondeComplet();
-  const j = JSON.parse(sante);
-  assert.equal(j.service, "ai-tech-office-sentinel");
-  assert.ok(!/Projet|example\.com|github\.com|p1/.test(sante));
+  assert.equal(sante, '{"ok":true}');
 });
 
 test("E1 workflows : exécution d'un fork ou d'un événement non sûr = inconnu (ni anomalie, ni correct) ; requête avec event=push", async () => {

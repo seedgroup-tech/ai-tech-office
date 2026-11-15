@@ -1,53 +1,49 @@
-// Réponse de GET /sante. Aucun nom de projet, aucune adresse, aucune clé.
+// Réponse de GET /sante : seulement { "ok": true } ou { "ok": false }.
+// ok = sentinel.json lu ET dernier_passage valide et de moins de 2 heures.
 // Cache en mémoire de l'instance (5 minutes) : au plus une lecture GitHub par instance et par période,
-// même sous rafale. Si GitHub échoue : dernière réponse connue, sinon { statut: "inconnu" }.
+// même sous rafale. Si GitHub échoue : dernière valeur connue, sinon ok = false.
 import { creerReseau } from "./reseau.mjs";
 import { clientMemoire } from "./github.mjs";
+import { enMs } from "./temps.mjs";
 
-export const VERSION = "1.0.0";
 export const DUREE_CACHE_MS = 5 * 60 * 1000;
+export const AGE_MAX_MS = 2 * 3600 * 1000;
 const ISO = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[+-]\d{2}:\d{2}$/;
 
-let cache = null;     // { t, corps }
+let cache = null;     // { t, passage } : passage = dernier_passage lu (texte) ou null
 let enCours = null;   // lecture en cours (partagée par les appels simultanés)
 
 export function reinitialiserCacheSante() { cache = null; enCours = null; }
 
-const entier = (v) => (Number.isInteger(v) && v >= 0 ? v : null);
+// ok ? Le calcul se fait à chaque appel, avec l'heure courante, sur la dernière valeur lue.
+export function etatOk(passage, maintenant) {
+  if (typeof passage !== "string" || !ISO.test(passage)) return false;
+  const age = maintenant.getTime() - enMs(passage);
+  return Number.isFinite(age) && age < AGE_MAX_MS && age > -10 * 60 * 1000;
+}
 
-// Corps de réponse construit depuis sentinel.json (champs filtrés, un par un).
-export function corpsSante(s) {
-  const r = s && typeof s.dernier_resultat === "object" && s.dernier_resultat ? s.dernier_resultat : {};
-  const gros = s && s.fichiers_trop_gros && typeof s.fichiers_trop_gros === "object" ? s.fichiers_trop_gros : {};
-  return {
-    service: "ai-tech-office-sentinel",
-    version: VERSION,
-    dernier_passage: typeof s.dernier_passage === "string" && ISO.test(s.dernier_passage) ? s.dernier_passage : null,
-    en_veille: s.pause !== false,
-    anomalies_ouvertes: entier(r.anomalies_ouvertes),
-    erreurs_dernier_passage: entier(r.erreurs),
-    fichiers_trop_gros: gros.alertes === true || gros.journal === true,
-  };
+async function lirePassage(env, fetchFn, ancienne) {
+  try {
+    const memoire = clientMemoire(env.GITHUB_TOKEN_MEMOIRE, creerReseau({ fetchFn, plafond: { total: 3, reserve: 3 } }));
+    const { valeur } = await memoire.lire("etat/sentinel.json");
+    return valeur && typeof valeur === "object" && typeof valeur.dernier_passage === "string" ? valeur.dernier_passage : null;
+  } catch {
+    return ancienne;   // GitHub en échec : dernière valeur connue (null au départ)
+  }
 }
 
 export async function donneesSante(env, { fetchFn = fetch, maintenant = () => new Date() } = {}) {
   const t = maintenant().getTime();
-  if (cache && t - cache.t < DUREE_CACHE_MS) return cache.corps;
-  if (enCours) return enCours;
-  enCours = (async () => {
-    let corps;
-    try {
-      const jeton = env.GITHUB_TOKEN_MEMOIRE || env.GITHUB_TOKEN_ORG;
-      const memoire = clientMemoire(jeton, creerReseau({ fetchFn, plafond: { total: 3, reserve: 3 } }));
-      const { valeur } = await memoire.lire("etat/sentinel.json");
-      corps = valeur && typeof valeur === "object" ? corpsSante(valeur) : { statut: "inconnu" };
-    } catch {
-      corps = cache ? cache.corps : { statut: "inconnu" };
+  if (!(cache && t - cache.t < DUREE_CACHE_MS)) {
+    if (!enCours) {
+      enCours = (async () => {
+        const passage = await lirePassage(env, fetchFn, cache ? cache.passage : null);
+        cache = { t, passage };   // l'essai compte aussi en cas d'échec : pas de nouvelle lecture avant 5 minutes
+      })();
     }
-    cache = { t, corps };   // l'essai compte aussi en cas d'échec : pas de nouvelle lecture avant 5 minutes
-    return corps;
-  })();
-  try { return await enCours; } finally { enCours = null; }
+    try { await enCours; } finally { enCours = null; }
+  }
+  return { ok: etatOk(cache.passage, maintenant()) };
 }
 
 const ENTETES = Object.freeze({
