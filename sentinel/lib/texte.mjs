@@ -3,7 +3,7 @@
 
 export function nettoyer(valeur, max = 120, sautsDeLigne = false) {
   if (valeur === null || valeur === undefined) return "";
-  const motif = sautsDeLigne ? /[\u0000-\u0009\u000B-\u001F\u007F-\u009F  ]/g : /[\u0000-\u001F\u007F-\u009F  ]/g;
+  const motif = sautsDeLigne ? /[\u0000-\u0009\u000B-\u001F\u007F-\u009F\u2028\u2029]/g : /[\u0000-\u001F\u007F-\u009F\u2028\u2029]/g;
   return String(valeur).replace(motif, "").slice(0, max);
 }
 

@@ -93,9 +93,12 @@ export function clientProduit(jeton, depot, reseau) {
   }
 
   return {
-    depot: () => obtenir(""),
-    executions: (branche) => obtenir(`/actions/runs?branch=${encodeURIComponent(branche)}&status=completed&per_page=30&exclude_pull_requests=true`),
-    demandesFusion: () => obtenir("/pulls?state=open&per_page=100"),
-    alertesDependabot: () => obtenir("/dependabot/alerts?state=open&severity=critical,high&per_page=100"),
+    workflows: () => obtenir("/actions/workflows?per_page=10"),
+    executionsWorkflow: (id, branche) => {
+      if (!Number.isInteger(id)) throw new Error("Identifiant de workflow invalide.");
+      return obtenir(`/actions/workflows/${id}/runs?branch=${encodeURIComponent(branche)}&status=completed&exclude_pull_requests=true&per_page=1`);
+    },
+    plusAncienneDemandeFusion: () => obtenir("/pulls?state=open&sort=created&direction=asc&per_page=1"),
+    alertesDependabot: () => obtenir("/dependabot/alerts?state=open&severity=critical,high&per_page=1"),
   };
 }

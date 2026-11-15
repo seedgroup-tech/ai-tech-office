@@ -1,6 +1,7 @@
 // Réseau gardé : un seul point de passage pour tous les appels sortants de Sentinel.
 // Règles : https obligatoire, hôte comparé EXACTEMENT, redirections non suivies,
-// délai maximal par appel, plafond de sous-requêtes (limite Cloudflare).
+// délai maximal par appel, budget unique d'appels externes par passage (offre gratuite Cloudflare :
+// 50 au plus ; Sentinel s'en tient à 40, dont 14 réservés aux écritures, relectures et réveils).
 
 export const HOTE_GITHUB = "api.github.com";
 export const HOTE_ANTHROPIC = "api.anthropic.com";
@@ -14,10 +15,9 @@ export class ErreurReseau extends Error {
 
 // plafond : { total, reserve } ; `reserve` sous-requêtes sont gardées aux écritures,
 // aux réveils et aux lectures de la mémoire.
-export function creerReseau({ fetchFn = fetch, sitesPermis = [], plafond = { total: 45, reserve: 12 } } = {}) {
+export function creerReseau({ fetchFn = fetch, sitesPermis = [], plafond = { total: 40, reserve: 14 } } = {}) {
   const sites = new Set(sitesPermis);
   let compte = 0;
-  let compteLectures = 0;
 
   async function garde(url, init = {}) {
     let u;
@@ -28,10 +28,8 @@ export function creerReseau({ fetchFn = fetch, sitesPermis = [], plafond = { tot
 
     const methode = (init.method || "GET").toUpperCase();
     const reserve = methode !== "GET" || (hote === HOTE_GITHUB && u.pathname.startsWith(MEMOIRE));
-    if (compte >= plafond.total) throw new ErreurReseau("Plafond de sous-requêtes atteint.");
-    if (!reserve && compteLectures >= plafond.total - plafond.reserve) throw new ErreurReseau("Plafond de sous-requêtes atteint.");
+    if (compte >= plafond.total || (!reserve && compte >= plafond.total - plafond.reserve)) throw new ErreurReseau("Budget d'appels atteint.");
     compte++;
-    if (!reserve) compteLectures++;
 
     const controleur = new AbortController();
     const minuteur = setTimeout(() => controleur.abort(), DELAIS_MS[hote] || DELAI_SITE_MS);
@@ -44,5 +42,7 @@ export function creerReseau({ fetchFn = fetch, sitesPermis = [], plafond = { tot
 
   garde.autoriserSite = (hote) => { sites.add(hote); };
   garde.sousRequetes = () => compte;
+  // Appels encore disponibles pour les contrôles (hors réserve).
+  garde.restantControles = () => Math.max(0, plafond.total - plafond.reserve - compte);
   return garde;
 }

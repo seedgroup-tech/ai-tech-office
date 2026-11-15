@@ -9,16 +9,18 @@ import { nettoyer, lienGitHub } from "./texte.mjs";
 import { HOTE_GITHUB, HOTE_ANTHROPIC } from "./reseau.mjs";
 
 export const SEUILS = Object.freeze({ site: 2, workflow: 1, pr: 1, dependabot: 1 });
-export const PAGE_RUNS = 30;
-export const PAGE_LISTES = 100;
+export const MAX_WORKFLOWS = 5;
 const SEPT_JOURS_MS = 7 * 24 * 3600 * 1000;
 const ECHECS_WORKFLOW = new Set(["failure", "timed_out", "startup_failure"]);
-const IGNORES_WORKFLOW = new Set(["cancelled", "skipped"]);
+const BRANCHE_VALIDE = /^[A-Za-z0-9_.\/-]{1,100}$/;
 
 export const empreinte = (projet, type, cible) => `${projet}|${type}|${cible}`;
 
 const inconnu = (projet, type, erreur = true, note = null) =>
   ({ projet, type, ok: false, anomalies: [], fermeture: false, erreur, note });
+
+// Branche principale : champ facultatif `branche` du projet, sinon « main ».
+export const brancheDe = (p) => (typeof p.branche === "string" && BRANCHE_VALIDE.test(p.branche) ? p.branche : "main");
 
 // Un site est contrôlable s'il est en https, sans identifiants, et n'est pas une API du bureau.
 export function siteValide(site) {
@@ -41,7 +43,7 @@ export async function controleSite(p, reseau) {
   try {
     rep = await reseau(p.site, { method: "GET", redirect: "manual", headers: { "User-Agent": "ai-tech-office-sentinel" } });
   } catch (e) {
-    if (e && e.garde) return inconnu(p.id, "site");
+    if (e && e.garde) return inconnu(p.id, "site", false);   // budget ou hôte refusé : inconnu
     return echec("Erreur réseau ou délai dépassé.");
   }
   try { await rep.body?.cancel(); } catch { /* sans importance */ }
@@ -51,82 +53,88 @@ export async function controleSite(p, reseau) {
   return { projet: p.id, type: "site", ok: true, fermeture: true, anomalies: [] };
 }
 
+// Workflows : liste (1 appel), puis la dernière exécution terminée de la branche principale
+// pour chacun des 5 premiers workflows actifs (1 appel chacun). Le reste est « inconnu ».
 export async function controleWorkflows(p, client) {
-  const r = await client.depot();
-  const branche = r.ok ? r.donnees.default_branch : null;
-  if (typeof branche !== "string" || !branche) return inconnu(p.id, "workflow");
-  const e = await client.executions(branche);
-  if (!e.ok || !Array.isArray(e.donnees.workflow_runs)) return inconnu(p.id, "workflow");
-  const vus = new Map(); // workflow_id -> décision (première exécution utile, la plus récente)
-  for (const run of e.donnees.workflow_runs) {
-    if (!run || run.workflow_id === undefined || vus.has(run.workflow_id)) continue;
-    if (IGNORES_WORKFLOW.has(run.conclusion) || !run.conclusion) continue;
-    vus.set(run.workflow_id, run);
-  }
+  const liste = await client.workflows();
+  if (!liste.ok || !Array.isArray(liste.donnees.workflows)) return inconnu(p.id, "workflow", true);
+  const actifs = liste.donnees.workflows
+    .filter((w) => w && w.state === "active" && Number.isInteger(w.id)).slice(0, MAX_WORKFLOWS);
+  const branche = brancheDe(p);
   const anomalies = [];
   const corrects = [];
-  for (const [id, run] of vus) {
-    const cible = String(id);
+  let erreur = false;
+  for (const w of actifs) {
+    let r;
+    try { r = await client.executionsWorkflow(w.id, branche); } catch (e) { erreur = erreur || !(e && e.garde); continue; }
+    const run = r.ok && Array.isArray(r.donnees.workflow_runs) ? r.donnees.workflow_runs[0] : null;
+    if (!r.ok) { erreur = true; continue; }
+    if (!run) continue;   // aucune exécution : inconnu
+    const cible = String(w.id);
     if (ECHECS_WORKFLOW.has(run.conclusion)) {
       anomalies.push({
         empreinte: empreinte(p.id, "workflow", cible), cible, niveau: "eleve",
         lien: lienGitHub(run.html_url) || `https://github.com/${p.depot}/actions`,
-        titre: `${p.nom} : le workflow « ${nettoyer(run.name, 80)} » est en échec`,
+        titre: `${p.nom} : le workflow « ${nettoyer(w.name, 80)} » est en échec`,
         detail: `Dernière exécution terminée : ${nettoyer(run.conclusion, 40)}.`,
       });
-    } else corrects.push(cible);
+    } else if (run.conclusion === "success") corrects.push(cible);
+    // cancelled, skipped, autre : inconnu
   }
-  // Un workflow absent de la page lue n'est pas « corrigé » : il reste inconnu.
-  return { projet: p.id, type: "workflow", ok: true, anomalies, fermeture: corrects };
+  return { projet: p.id, type: "workflow", ok: true, anomalies, fermeture: corrects, erreur };
 }
 
+// Demandes de fusion : une seule anomalie par projet, sur la plus ancienne (son titre n'est jamais repris).
 export async function controlePr(p, client, maintenant) {
-  const r = await client.demandesFusion();
+  const r = await client.plusAncienneDemandeFusion();
   if (!r.ok || !Array.isArray(r.donnees)) return inconnu(p.id, "pr");
+  const pr = r.donnees[0];
   const anomalies = [];
-  for (const pr of r.donnees) {
-    const cree = Date.parse(pr && pr.created_at);
-    if (!Number.isInteger(pr && pr.number) || !(maintenant.getTime() - cree > SEPT_JOURS_MS)) continue;
-    // Le titre (texte libre de tiers) n'est pas repris.
+  if (pr && Number.isInteger(pr.number) && maintenant.getTime() - Date.parse(pr.created_at) > SEPT_JOURS_MS) {
+    const lien = lienGitHub(pr.html_url) || `https://github.com/${p.depot}/pulls`;
     anomalies.push({
-      empreinte: empreinte(p.id, "pr", pr.number), cible: String(pr.number), niveau: "info",
-      lien: lienGitHub(pr.html_url) || `https://github.com/${p.depot}/pulls`,
-      titre: `${p.nom} : demande de fusion n° ${pr.number} ouverte depuis plus de 7 jours`,
-      detail: "Demande de fusion en attente depuis plus de 7 jours.",
+      empreinte: empreinte(p.id, "pr", "anciennes"), cible: "anciennes", niveau: "info", lien,
+      titre: `${p.nom} : demande de fusion ouverte depuis plus de 7 jours`,
+      detail: `Plus ancienne : n° ${pr.number} (${lien}).`,
     });
   }
-  return { projet: p.id, type: "pr", ok: true, anomalies, fermeture: r.donnees.length < PAGE_LISTES };
+  return { projet: p.id, type: "pr", ok: true, anomalies, fermeture: true };
 }
 
+// Dependabot : une seule anomalie par projet s'il existe au moins une alerte critique ou élevée.
 export async function controleDependabot(p, client) {
   const r = await client.alertesDependabot();
   if (r.statut === 403 || r.statut === 404) {
     return inconnu(p.id, "dependabot", false, { cle: `${p.id}|dependabot`, texte: `${nettoyer(p.nom, 60)} : accès non permis ou Dependabot désactivé.` });
   }
   if (!r.ok || !Array.isArray(r.donnees)) return inconnu(p.id, "dependabot");
+  const a = r.donnees[0];
   const anomalies = [];
-  for (const a of r.donnees) {
-    if (!Number.isInteger(a && a.number)) continue;
-    const resume = nettoyer(a.security_advisory && a.security_advisory.summary, 120);
+  if (a && typeof a === "object") {
+    const gravite = nettoyer(a.security_advisory && a.security_advisory.severity, 20) || "inconnue";
+    const paquet = nettoyer(a.dependency && a.dependency.package && a.dependency.package.name, 80) || "inconnu";
     anomalies.push({
-      empreinte: empreinte(p.id, "dependabot", a.number), cible: String(a.number), niveau: "eleve",
+      empreinte: empreinte(p.id, "dependabot", "critique-ou-eleve"), cible: "critique-ou-eleve", niveau: "eleve",
       lien: lienGitHub(a.html_url) || `https://github.com/${p.depot}/security/dependabot`,
-      titre: `${p.nom} : alerte Dependabot n° ${a.number} (${nettoyer(a.security_advisory && a.security_advisory.severity, 20)})`,
-      detail: resume || "Vulnérabilité signalée par Dependabot.",
+      titre: `${p.nom} : alerte Dependabot critique ou élevée`,
+      detail: `Gravité : ${gravite} ; paquet : ${paquet}.`,
     });
   }
-  return { projet: p.id, type: "dependabot", ok: true, anomalies, fermeture: r.donnees.length < PAGE_LISTES };
+  return { projet: p.id, type: "dependabot", ok: true, anomalies, fermeture: true };
 }
 
-// Tous les contrôles d'un projet, l'un après l'autre. Une erreur technique rend le contrôle « inconnu ».
-export async function controlerProjet(p, { reseau, client, maintenant }) {
-  const securise = async (type, f) => { try { return await f(); } catch { return inconnu(p.id, type); } };
+const securise = async (p, type, f) => { try { return await f(); } catch (e) { return inconnu(p.id, type, !(e && e.garde)); } };
+
+// Contrôle du site d'un projet (0 ou 1 résultat).
+export async function controlerSiteProjet(p, reseau) {
+  return siteValide(p.site) ? [await securise(p, "site", () => controleSite(p, reseau))] : [];
+}
+
+// Contrôles GitHub d'un projet, l'un après l'autre (au plus 8 appels).
+export async function controlerGitHubProjet(p, client, maintenant) {
   const resultats = [];
-  if (siteValide(p.site)) resultats.push(await securise("site", () => controleSite(p, reseau)));
-  if (client) {
-    resultats.push(await securise("workflow", () => controleWorkflows(p, client)));
-    resultats.push(await securise("pr", () => controlePr(p, client, maintenant)));
-    resultats.push(await securise("dependabot", () => controleDependabot(p, client)));
-  }
+  resultats.push(await securise(p, "workflow", () => controleWorkflows(p, client)));
+  resultats.push(await securise(p, "pr", () => controlePr(p, client, maintenant)));
+  resultats.push(await securise(p, "dependabot", () => controleDependabot(p, client)));
   return resultats;
 }

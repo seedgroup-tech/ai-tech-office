@@ -2,7 +2,7 @@
 // Ordre anti-boucle : les compteurs de réveil sont écrits dans sentinel.json AVANT l'appel de la routine.
 import { creerReseau } from "./reseau.mjs";
 import { clientMemoire, clientProduit, ErreurConflit, DEPOT } from "./github.mjs";
-import { controlerProjet, siteValide } from "./controles.mjs";
+import { controlerSiteProjet, controlerGitHubProjet, siteValide } from "./controles.mjs";
 import { fusionner, appliquerAlertes, ajouterNote } from "./anomalies.mjs";
 import { decisionsReveil } from "./garde-fous.mjs";
 import { configurationRoutine, declencher } from "./routine.mjs";
@@ -15,6 +15,7 @@ const MOTIF_ID = /^[A-Za-z0-9_.-]{1,64}$/;
 const MOTIF_DEPOT = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/;
 const CLE_PAR_PROPRIETAIRE = { "seedgroup-tech": "org", "seedscaleup": "perso" };
 const SENTINEL_INITIAL = { pause: false, dernier_passage: null, reveils_du_jour: 0, notes: [] };
+const APPELS_GITHUB_MAX = 8;   // 1 liste de workflows + 5 exécutions + 1 demande de fusion + 1 Dependabot
 const NIVEAUX_JOURNAL = ["critique", "eleve"];
 
 const estObjet = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
@@ -37,7 +38,7 @@ function preparerProjets(liste, env, reseau, notes) {
   const prets = [];
   for (const brut of liste) {
     if (!estObjet(brut) || brut.actif !== true || typeof brut.id !== "string" || !MOTIF_ID.test(brut.id)) continue;
-    const p = { id: brut.id, nom: nettoyer(brut.nom, 60) || brut.id, depot: brut.depot, site: brut.site };
+    const p = { id: brut.id, nom: nettoyer(brut.nom, 60) || brut.id, depot: brut.depot, site: brut.site, branche: brut.branche };
     const note = (suffixe, texte) => notes.push({ cle: `${p.id}|${suffixe}`, texte: `${p.nom} : ${texte}` });
     if (typeof p.depot !== "string" || !MOTIF_DEPOT.test(p.depot)) { note("depot", "dépôt invalide, projet sauté."); continue; }
     if (p.depot.toLowerCase() === DEPOT.toLowerCase()) { note("memoire", "le dépôt mémoire n'est pas contrôlé comme produit, projet sauté."); continue; }
@@ -54,7 +55,7 @@ function preparerProjets(liste, env, reseau, notes) {
 }
 
 // Calcule, sur des versions données de sentinel.json et alertes.json, tout ce qu'il y a à écrire.
-function planifier({ sentinel, alertes, resultats, notesNouvelles, now, config, hashes, trop_gros, nbProjets }) {
+function planifier({ sentinel, alertes, resultats, notesNouvelles, now, config, hashes, trop_gros, nbProjets, rotation }) {
   const premier = sentinel.dernier_passage === null || sentinel.dernier_passage === undefined;
   const f = fusionner({ alertes, observation: sentinel.en_observation, resultats, maintenant: now, sha6: (e) => hashes[e] || "000000" });
   const g = decisionsReveil({ creees: f.creees, sentinel, maintenant: now, configuration: config, premierPassage: premier });
@@ -68,6 +69,7 @@ function planifier({ sentinel, alertes, resultats, notesNouvelles, now, config, 
     dernier_reveil_projet: g.compteurs.dernier_reveil_projet,
     notes,
     fichiers_trop_gros: trop_gros,
+    ...rotation,
     dernier_passage: isoDouala(now),
     dernier_resultat: { projets: nbProjets, anomalies_ouvertes: f.ouvertes_apres, erreurs: resultats.filter((r) => r.erreur).length },
   };
@@ -144,7 +146,23 @@ export async function passage(env, { fetchFn = fetch, maintenant = () => new Dat
   if (trop_gros.alertes) notesNouvelles.push({ cle: "sentinel|taille-alertes", texte: "alertes.json dépasse 700 Ko : archivage à prévoir par le propriétaire." });
   if (trop_gros.journal) notesNouvelles.push({ cle: "sentinel|taille-journal", texte: "journal.json dépasse 700 Ko : archivage à prévoir par le propriétaire." });
   const prets = preparerProjets(projetsF.valeur, env, reseau, notesNouvelles);
-  const groupes = await Promise.all(prets.map(({ p, client }) => controlerProjet(p, { reseau, client, maintenant: now })));
+  // Budget : GitHub = UN projet par passage, à tour de rôle (au plus 8 appels) ;
+  // sites = à chaque passage, dans la limite du budget restant (sinon rotation des sites).
+  const avecClient = prets.filter((x) => x.client);
+  let idxGh = avecClient.findIndex((x) => x.p.id === sentinelLu.valeur.rotation_github);
+  if (idxGh < 0) idxGh = 0;
+  const choisi = avecClient[idxGh] || null;
+  const rotation = { rotation_github: avecClient.length ? avecClient[(idxGh + 1) % avecClient.length].p.id : null };
+  const avecSite = prets.filter((x) => x.p.site);
+  const place = Math.max(0, reseau.restantControles() - (choisi ? APPELS_GITHUB_MAX : 0));
+  const nbSites = Math.min(avecSite.length, place);
+  const debutSites = avecSite.length ? (Number.isInteger(sentinelLu.valeur.rotation_sites) ? sentinelLu.valeur.rotation_sites : 0) % avecSite.length : 0;
+  const lot = Array.from({ length: nbSites }, (_, i) => avecSite[(debutSites + i) % avecSite.length]);
+  rotation.rotation_sites = avecSite.length ? (debutSites + nbSites) % avecSite.length : 0;
+  const groupes = await Promise.all([
+    ...lot.map(({ p }) => controlerSiteProjet(p, reseau)),
+    choisi ? controlerGitHubProjet(choisi.p, choisi.client, now) : [],
+  ]);
   const resultats = groupes.flat();
   for (const r of resultats) if (r.note) notesNouvelles.push(r.note);
   resume.projets = prets.length;
@@ -154,7 +172,7 @@ export async function passage(env, { fetchFn = fetch, maintenant = () => new Dat
 
   // 3. Décisions, puis écriture de sentinel.json (compteurs AVANT tout réveil)
   const config = configurationRoutine(env);
-  const entree = { resultats, notesNouvelles, now, config, hashes, trop_gros, nbProjets: prets.length };
+  const entree = { resultats, notesNouvelles, now, config, hashes, trop_gros, nbProjets: prets.length, rotation };
   let plan = planifier({ ...entree, sentinel: sentinelLu.valeur, alertes: alertesLues.valeur });
   let alertesCourantes = alertesLues;
   if (plan.doitEcrire) {
