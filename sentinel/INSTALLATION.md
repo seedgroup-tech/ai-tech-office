@@ -1,0 +1,197 @@
+# Installer Sentinel, la veille automatique du bureau
+
+Ce guide est pour vous, Yan. Comptez environ 1 heure. Coût : 0 FCFA de plus (offre gratuite de Cloudflare ; voir l'étape 9 pour l'abonnement Claude).
+
+Sentinel est un petit programme hébergé chez Cloudflare. Toutes les 15 minutes, il regarde si vos sites répondent, si les contrôles automatiques des dépôts sont en échec, si des demandes de fusion traînent et si GitHub signale des failles graves. Il note ce qu'il trouve dans la mémoire du bureau. Quand le problème est grave, il réveille un agent Claude Code. Quand tout va bien, il se tait.
+
+Vous allez créer 5 réglages secrets : `GITHUB_TOKEN_MEMOIRE` (la seule clé qui écrit, et seulement dans la mémoire), `GITHUB_TOKEN_ORG`, `GITHUB_TOKEN_PERSO`, `ROUTINE_ID` et `ROUTINE_TOKEN`. Sans `GITHUB_TOKEN_MEMOIRE`, Sentinel ne fait rien.
+
+> **Ce qu'il ne faut jamais faire**
+>
+> - Coller une clé dans une conversation (avec Claude, un agent, une messagerie, un e-mail).
+> - Coller une clé dans un fichier du dépôt ou dans la mémoire du bureau.
+> - Mettre une clé dans `wrangler.toml` (ce fichier ne contient aucun secret).
+> - Donner un droit d'écriture sur KLOQin ou XADIKOA. Sentinel y lit seulement.
+> - Cocher plus de dépôts ou plus de droits que ce que le guide indique.
+
+Les écrans de GitHub, de Claude et de Cloudflare changent de temps en temps : si un libellé diffère un peu, cherchez le mot le plus proche.
+
+---
+
+## Étape 0 — Avant de commencer
+
+Vérifiez que ces points sont vrais :
+
+- La demande de fusion de la mission M-008 a été relue (le fichier `sentinel/wrangler.toml` a été relu par une session Claude distincte) et fusionnée par vous. Le contrôle des chemins sensibles était rouge à cause de ce seul fichier ; vous l'avez contourné en connaissance de cause.
+- Les fichiers `etat/projets.json` et `etat/sentinel.json` sont sur la branche principale (`main`) du dépôt `ai-tech-office-memoire`.
+
+Si l'un de ces points manque, arrêtez-vous et dites-le au bureau.
+
+## Étape 1 — Clés GitHub A1 et A2 (organisation seedgroup-tech)
+
+Vous avez décidé (accord écrit du 15 nov. 2026) de créer **deux clés** pour l'organisation, au lieu d'une seule clé A. Raison : GitHub donne à une clé les mêmes droits sur tous les dépôts qu'elle couvre. Une clé A unique pourrait donc écrire dans `ai-tech-office`, le dépôt d'où Sentinel se redéploie tout seul : si elle fuyait, quelqu'un pourrait y glisser du code et lire tous les secrets de Sentinel. Avec deux clés, la seule clé qui écrit ne touche que la mémoire.
+
+### 1a — Clé A1 : la mémoire (lecture et écriture)
+
+1. Sur ordinateur, connectez-vous à GitHub.
+2. Photo en haut à droite, **Settings**, puis tout en bas à gauche **Developer settings**.
+3. **Personal access tokens**, **Fine-grained tokens**, **Generate new token**.
+4. Remplissez :
+   - **Token name** : `sentinel-memoire` ;
+   - **Expiration** : **90 days** ;
+   - **Resource owner** : **seedgroup-tech** (l'organisation, pas votre compte personnel) ;
+   - **Repository access** : **Only select repositories**, puis cochez **seulement** `ai-tech-office-memoire`.
+5. **Repository permissions** : **Contents** en **Read and write** ; **Metadata** en **Read-only** (obligatoire). Rien d'autre.
+6. Cliquez sur **Generate token**.
+7. Si GitHub indique que la clé attend l'accord d'un administrateur de l'organisation : dans **seedgroup-tech**, **Settings**, **Personal access tokens**, **Pending requests**, approuvez la demande.
+8. GitHub affiche la clé **une seule fois**. Copiez-la dans un endroit sûr et temporaire (votre gestionnaire de mots de passe, par exemple). Elle deviendra le secret `GITHUB_TOKEN_MEMOIRE`. Ne la collez jamais dans une conversation.
+
+### 1b — Clé A2 : les dépôts de l'organisation (lecture seule)
+
+1. Recommencez : **Settings**, **Developer settings**, **Personal access tokens**, **Fine-grained tokens**, **Generate new token**.
+2. Remplissez :
+   - **Token name** : `sentinel-org` ;
+   - **Expiration** : **90 days** ;
+   - **Resource owner** : **seedgroup-tech** ;
+   - **Repository access** : **Only select repositories**, puis cochez `ai-tech-office` et `site-personnel`, et rien d'autre (**pas** la mémoire).
+3. **Repository permissions**, toutes en **Read-only** : **Actions**, **Pull requests**, **Dependabot alerts**, **Metadata**. **Aucun** droit sur **Contents**, aucun droit d'écriture.
+4. **Generate token**, accord de l'administrateur si demandé (comme en 1a), puis copiez la clé dans un endroit sûr et temporaire. Elle deviendra le secret `GITHUB_TOKEN_ORG`.
+
+### Recommandé en plus
+
+Protégez la branche `main` du dépôt `ai-tech-office` (GitHub : dépôt, **Settings**, **Branches** ou **Rules**, règle sur `main` : demande de fusion obligatoire). Ainsi, même une clé volée ne pourrait pas y pousser directement le code que Cloudflare déploie.
+
+## Étape 2 — Clé GitHub B (compte personnel seedscaleup)
+
+Cette clé lit seulement KLOQin et XADIKOA.
+
+1. Connectez-vous à GitHub avec le compte **seedscaleup**.
+2. **Settings**, **Developer settings**, **Personal access tokens**, **Fine-grained tokens**, **Generate new token**.
+3. Remplissez :
+   - **Token name** : `sentinel-perso` ;
+   - **Expiration** : **90 days** ;
+   - **Resource owner** : **seedscaleup** ;
+   - **Repository access** : **Only select repositories** : `seedscaleup/KLOQin` et `seedscaleup/xadikoa` **uniquement**.
+4. **Repository permissions**, tout en **Read-only** : **Actions**, **Pull requests**, **Dependabot alerts**, **Metadata**.
+5. **Aucune permission d'écriture.** Si vous voyez « Read and write » quelque part, remettez sur « Read-only » ou « No access ». C'est la règle C du bureau.
+6. **Generate token**, puis copiez la clé dans un endroit sûr et temporaire, comme à l'étape 1.
+
+## Étape 3 — La routine Claude Code « Sentinel – intervention »
+
+La routine est l'agent qui se réveille quand Sentinel lui signale un problème grave.
+
+1. Ouvrez `claude.ai/code/routines`.
+2. Créez une nouvelle routine (selon l'interface : **New routine**, **Create**, **Nouvelle routine**).
+3. **Nom** : `Sentinel – intervention`.
+4. **Instructions** : ouvrez le fichier `sentinel/ROUTINE.md` (rédigé par le AI CTO) et collez son texte **tel quel**, sans rien changer.
+5. **Environnement** : `agents`.
+6. **Dépôts** : `ai-tech-office-agents` et `ai-tech-office-memoire`.
+7. Ajoutez un **déclencheur** de type **API** (selon l'interface, le bouton peut s'appeler **Add trigger**, **Add API trigger** ou **Générer un jeton**).
+8. L'interface affiche alors :
+   - l'**identifiant de la routine** : ce sera `ROUTINE_ID` ;
+   - le **jeton du déclencheur** : ce sera `ROUTINE_TOKEN`. **Il n'est affiché qu'une seule fois.** Copiez-le tout de suite dans un endroit sûr et temporaire.
+9. Si vous avez raté l'affichage du jeton : régénérez-le (selon l'interface, **Regenerate** ou **Revoke and create**).
+10. Enregistrez la routine.
+
+## Étape 4 — Le Worker Cloudflare
+
+1. Connectez-vous au tableau de bord Cloudflare.
+2. Menu de gauche : **Workers & Pages**, puis **Create** (ou **Créer**), puis **Import a repository** (importer un dépôt Git).
+3. Choisissez le compte GitHub de **seedgroup-tech** et le dépôt **`ai-tech-office`** (le dépôt de référence, pas la copie `-agents`). Si Cloudflare demande d'autoriser l'accès à ce dépôt, autorisez **seulement** ce dépôt, en plus de ceux déjà autorisés.
+4. Réglages :
+   - **Project name** (nom) : `ai-tech-office-sentinel` ;
+   - **Production branch** : `main` ;
+   - **Root directory** (dossier racine, dans « Advanced » ou « Paramètres avancés ») : `sentinel` ;
+   - **Deploy command** (commande de déploiement) : la valeur par défaut est `npx wrangler deploy`. Pour plus de sécurité, fixez la version de l'outil : remplacez-la par `npx wrangler@<version> deploy`, avec le numéro de version exact que le bureau vous donnera au moment de l'installation (un outil non figé pourrait changer sans prévenir) ;
+   - **Build command** : laissez vide si Cloudflare l'accepte.
+5. Le Worker se redéploie automatiquement à chaque fusion sur `main`.
+6. **Pas de déploiement des autres branches** : si Cloudflare propose des aperçus ou des déploiements de branches (**Non-production branch builds**, **Preview**), **désactivez-les**.
+7. Cliquez sur **Save and Deploy**. Le premier déploiement peut se plaindre de secrets manquants ou rester inactif : c'est normal, ils arrivent à l'étape 5.
+
+## Étape 5 — Les 5 secrets dans Cloudflare
+
+1. Dans le Worker `ai-tech-office-sentinel` : **Settings** (Paramètres), puis **Variables and Secrets** (Variables et secrets).
+2. Pour chaque ligne : **Add**, type **Secret**, nom exact, valeur, puis **Deploy** ou **Save**.
+
+| Nom (exactement) | Valeur |
+|---|---|
+| `GITHUB_TOKEN_MEMOIRE` | la clé A1 (étape 1a) |
+| `GITHUB_TOKEN_ORG` | la clé A2 (étape 1b) |
+| `GITHUB_TOKEN_PERSO` | la clé B (étape 2) |
+| `ROUTINE_ID` | l'identifiant de la routine (étape 3) |
+| `ROUTINE_TOKEN` | le jeton du déclencheur (étape 3) |
+
+3. Vérifiez que chaque secret est bien de type **Secret** (la valeur n'est plus lisible après l'enregistrement).
+4. Quand tout est saisi, effacez les copies temporaires des clés (page, fichier, presse-papiers : copiez un autre texte pour l'effacer).
+5. Si Cloudflare demande de redéployer pour appliquer les secrets, faites-le (**Deployments**, dernier déploiement, **⋯**, **Redeploy** ou **Retry**).
+
+## Étape 6 — Vérifier
+
+### 6.1 La page de santé
+
+1. Ouvrez `https://ai-tech-office-sentinel.<votre-sous-domaine>.workers.dev/sante`. Votre sous-domaine est visible dans Cloudflare, sur la page du Worker.
+2. La page affiche seulement :
+   - `{"ok":true}` : Sentinel a fait un passage il y a moins de 2 heures ;
+   - `{"ok":false}` : pas de passage récent, ou la mémoire est illisible. Juste après l'installation, c'est normal pendant les 15 premières minutes ; ensuite, dites-le au bureau.
+3. Par votre décision, cette page ne montre rien d'autre : ni compteur, ni état de veille, ni nom de projet, ni adresse, ni clé. Pour le détail, regardez `etat/sentinel.json` dans la mémoire, ou la console.
+
+### 6.2 Test de panne simulée
+
+**Attention : ce test déclenche un vrai réveil de la routine et consomme une session de votre abonnement Claude.** Faites-le une seule fois.
+
+0. Attendez que la page de santé affiche `{"ok":true}` (étape 6.1) : **le tout premier passage ne réveille jamais personne**, pour ne pas réveiller les agents sur des problèmes déjà connus.
+1. Sur GitHub, dans le dépôt `ai-tech-office-memoire`, ouvrez `etat/projets.json` et ajoutez ce projet dans la liste (sans oublier la virgule avec l'élément précédent) :
+
+   ```
+   { "id": "test-panne", "nom": "Test de panne", "depot": "seedgroup-tech/ai-tech-office", "site": "https://test-panne.invalid", "proprietaire_cle": "org", "actif": true }
+   ```
+
+   Le domaine `.invalid` n'existe jamais : le site sera toujours en panne, c'est voulu.
+2. Attendez **2 passages**, soit 30 à 45 minutes. Une alerte critique n'est créée qu'après 2 échecs de suite.
+3. Constatez :
+   - dans la console, une alerte **critique** concernant `test-panne` ;
+   - dans le journal, une ligne « Sentinel : … » qui indique le réveil, avec l'**adresse de la session** (ou « adresse non renvoyée »).
+4. Ouvrez l'adresse de session pour voir ce que la routine a fait.
+5. **Nettoyez** : dans `etat/projets.json`, passez ce projet à `"actif": false` (ne le supprimez pas).
+6. Une alerte d'un projet inactif n'est pas fermée automatiquement. Si elle reste ouverte, fermez-la à la main depuis la console, ou demandez au bureau de le faire.
+
+## Étape 7 — Mettre le bureau en veille
+
+La veille veut dire : Sentinel continue de surveiller et de noter, mais ne réveille personne.
+
+1. Dans le dépôt `ai-tech-office-memoire`, ouvrez `etat/sentinel.json`.
+2. Passez `"pause"` à `true`. Enregistrez (**Commit changes**).
+3. Pour reprendre : repassez `"pause"` à `false`.
+4. Sentinel ne modifie jamais ce réglage lui-même.
+
+## Étape 8 — Renouveler les clés, et en cas de fuite
+
+**Renouvellement.** Les clés A et B expirent au bout de 90 jours.
+
+1. Mettez **dès maintenant** un rappel dans votre agenda, **une semaine avant** la date d'expiration affichée par GitHub.
+2. Ce jour-là : refaites les étapes 1a, 1b et 2 (nouvelles clés), remplacez les secrets `GITHUB_TOKEN_MEMOIRE`, `GITHUB_TOKEN_ORG` et `GITHUB_TOKEN_PERSO` dans Cloudflare (étape 5, bouton **Edit**), puis supprimez les anciennes clés dans GitHub.
+3. Si vous oubliez, Sentinel ne peut plus lire GitHub : rien n'est perdu, il suffit de renouveler.
+
+**En cas de fuite** (une clé collée par erreur quelque part, ou vue par quelqu'un) :
+
+1. Sur GitHub, **révoquez** tout de suite la clé concernée (**Developer settings**, **Fine-grained tokens**, **Delete** ou **Revoke**).
+2. Créez-en une nouvelle (étape 1 ou 2).
+3. Remplacez le secret dans Cloudflare (étape 5).
+4. S'il s'agit de `ROUTINE_TOKEN` : régénérez le jeton du déclencheur dans la routine (étape 3), puis remplacez le secret.
+5. Prévenez le bureau, **sans écrire la valeur de la clé**.
+
+## Étape 9 — Ce que ça coûte
+
+- **Cloudflare** : l'offre gratuite des Workers suffit (le cron et les requêtes restent dans les limites gratuites pour 4 projets). Si Cloudflare vous propose un passage à une offre payante, refusez : toute dépense est de niveau N3 et demande votre accord écrit.
+- **Claude** : chaque réveil de la routine démarre une session et consomme votre abonnement Claude. Sentinel réveille **au plus 6 fois par jour**, et jamais deux fois pour la même anomalie, même si elle revient plus tard (règle stricte, voir la note de conception). Pour couper tout réveil : étape 7.
+
+## En cas de problème
+
+| Ce que vous voyez | Que faire |
+|---|---|
+| `/sante` ne répond pas ou donne une erreur | vérifiez que le Worker est déployé, et l'adresse (sous-domaine) |
+| `/sante` affiche `{"ok":false}` après 30 minutes | vérifiez les 5 secrets (étape 5), puis redéployez ; regardez les journaux du Worker (**Observability**) |
+| Aucune alerte ni réveil pendant le test | vérifiez que `"pause"` est à `false`, et que le projet de test est `"actif": true` |
+| Alerte sans réveil | la raison est notée sur l'alerte (veille, limite de 6 par jour, déjà réveillé récemment, ou routine non configurée) |
+
+Si une vérification échoue : décrivez au bureau ce que vous voyez, sans jamais copier une valeur secrète.
