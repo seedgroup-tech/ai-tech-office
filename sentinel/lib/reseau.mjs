@@ -9,6 +9,9 @@ const DELAIS_MS = { [HOTE_GITHUB]: 10000, [HOTE_ANTHROPIC]: 15000 };
 const DELAI_SITE_MS = 10000;
 const MEMOIRE = "/repos/seedgroup-tech/ai-tech-office-memoire/";
 
+const MOTIF_ECRITURE_MEMOIRE = /^https:\/\/api\.github\.com\/repos\/seedgroup-tech\/ai-tech-office-memoire\/contents\/etat\/(alertes|journal|sentinel)\.json$/;
+const MOTIF_REVEIL = /^https:\/\/api\.anthropic\.com\/v1\/claude_code\/routines\/[A-Za-z0-9_-]{1,128}\/fire$/;
+
 export class ErreurReseau extends Error {
   constructor(message) { super(message); this.garde = true; }
 }
@@ -27,6 +30,12 @@ export function creerReseau({ fetchFn = fetch, sitesPermis = [], plafond = { tot
     if (hote !== HOTE_GITHUB && hote !== HOTE_ANTHROPIC && !sites.has(hote)) throw new ErreurReseau("Hôte refusé.");
 
     const methode = (init.method || "GET").toUpperCase();
+    // Défense en profondeur : seules 2 écritures existent (PUT mémoire sur 3 fichiers, POST de la routine).
+    if (methode !== "GET") {
+      const ecritureMemoire = methode === "PUT" && MOTIF_ECRITURE_MEMOIRE.test(url);
+      const reveil = methode === "POST" && MOTIF_REVEIL.test(url);
+      if (!ecritureMemoire && !reveil) throw new ErreurReseau("Méthode refusée.");
+    }
     const reserve = methode !== "GET" || (hote === HOTE_GITHUB && u.pathname.startsWith(MEMOIRE));
     if (compte >= plafond.total || (!reserve && compte >= plafond.total - plafond.reserve)) throw new ErreurReseau("Budget d'appels atteint.");
     compte++;

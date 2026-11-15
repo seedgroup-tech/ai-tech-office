@@ -9,11 +9,17 @@ export const PLAFOND_EMPREINTES = 1000;
 const NIVEAUX_REVEIL = ["critique", "eleve"];
 
 // Compteurs du jour : remis à zéro quand le jour de Douala change.
+// Un compteur qui n'est pas un entier de 0 à 6 est traité comme 6 (aucun réveil).
 export function compteursDuJour(sentinel, maintenant) {
   const jour = jourDouala(maintenant);
-  const memeJour = sentinel.jour === jour;
-  return { jour, reveils_du_jour: memeJour && Number.isInteger(sentinel.reveils_du_jour) ? sentinel.reveils_du_jour : 0 };
+  if (sentinel.jour !== jour) return { jour, reveils_du_jour: 0 };
+  const n = sentinel.reveils_du_jour;
+  return { jour, reveils_du_jour: Number.isInteger(n) && n >= 0 && n <= PLAFOND_JOUR ? n : PLAFOND_JOUR };
 }
+
+// Objet simple (ni tableau, ni null) ; absent = vide.
+const objetSimple = (v) => v === undefined || (v !== null && typeof v === "object" && !Array.isArray(v));
+const copieNue = (v) => Object.assign(Object.create(null), v || {});
 
 const reveilNonFait = (alerte, raison) => ({ alerte, reveil: false, raison });
 
@@ -21,10 +27,12 @@ const reveilNonFait = (alerte, raison) => ({ alerte, reveil: false, raison });
 // Renvoie { decisions: [{alerte, reveil, raison?}], compteurs, notes }.
 export function decisionsReveil({ creees, sentinel, maintenant, configuration, premierPassage }) {
   const { jour, reveils_du_jour } = compteursDuJour(sentinel, maintenant);
-  const parEmpreinte = { ...(sentinel.reveils_par_empreinte || {}) };
-  const parProjet = { ...(sentinel.dernier_reveil_projet || {}) };
+  const malformes = !objetSimple(sentinel.reveils_par_empreinte) || !objetSimple(sentinel.dernier_reveil_projet);
+  const parEmpreinte = copieNue(sentinel.reveils_par_empreinte);
+  const parProjet = copieNue(sentinel.dernier_reveil_projet);
   let total = reveils_du_jour;
   const notes = [];
+  if (malformes) notes.push({ cle: "sentinel|registres-malformes", texte: "Registres de réveils illisibles dans sentinel.json : aucun réveil." });
   const decisions = [];
   const candidates = creees
     .filter((a) => NIVEAUX_REVEIL.includes(a.niveau))
@@ -35,7 +43,8 @@ export function decisionsReveil({ creees, sentinel, maintenant, configuration, p
     const ancien = present ? enMs(parEmpreinte[a.empreinte]) : NaN;
     const dernierProjet = enMs(parProjet[a.projet]);
     let raison = null;
-    if (sentinel.pause !== false) raison = "bureau en veille";
+    if (malformes) raison = "registres de réveils illisibles";
+    else if (sentinel.pause !== false) raison = "bureau en veille";
     else if (premierPassage) raison = "premier passage";
     else if (!configuration.ok) raison = configuration.raison;
     else if (present && !(maintenant.getTime() - ancien >= DELAI_REVEIL_EMPREINTE_MS)) raison = "empreinte déjà réveillée";
@@ -50,8 +59,11 @@ export function decisionsReveil({ creees, sentinel, maintenant, configuration, p
     parProjet[a.projet] = isoDouala(maintenant);
     decisions.push({ alerte: a, reveil: true });
   }
+  // Registres malformés : on ne les réécrit pas (aucun réveil n'a eu lieu).
   return {
     decisions, notes,
-    compteurs: { jour, reveils_du_jour: total, reveils_par_empreinte: parEmpreinte, dernier_reveil_projet: parProjet },
+    compteurs: malformes
+      ? { jour, reveils_du_jour: total, reveils_par_empreinte: sentinel.reveils_par_empreinte, dernier_reveil_projet: sentinel.dernier_reveil_projet }
+      : { jour, reveils_du_jour: total, reveils_par_empreinte: parEmpreinte, dernier_reveil_projet: parProjet },
   };
 }

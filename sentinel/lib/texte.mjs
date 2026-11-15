@@ -3,7 +3,10 @@
 
 export function nettoyer(valeur, max = 120, sautsDeLigne = false) {
   if (valeur === null || valeur === undefined) return "";
-  const motif = sautsDeLigne ? /[\u0000-\u0009\u000B-\u001F\u007F-\u009F\u2028\u2029]/g : /[\u0000-\u001F\u007F-\u009F\u2028\u2029]/g;
+  // + caractères invisibles ou de sens d'écriture (U+200B-200F, 202A-202E, 2066-2069, FEFF)
+  const motif = sautsDeLigne
+    ? /[\u0000-\u0009\u000B-\u001F\u007F-\u009F\u2028\u2029\u200B-\u200F\u202A-\u202E\u2066-\u2069\uFEFF]/g
+    : /[\u0000-\u001F\u007F-\u009F\u2028\u2029\u200B-\u200F\u202A-\u202E\u2066-\u2069\uFEFF]/g;
   return String(valeur).replace(motif, "").slice(0, max);
 }
 

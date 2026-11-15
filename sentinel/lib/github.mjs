@@ -9,6 +9,11 @@ export const ECRITURE_PERMISE = Object.freeze(["etat/alertes.json", "etat/journa
 const LECTURE_PERMISE = /^etat\/[a-z]+\.json$/;
 const NOM_DEPOT = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/;
 
+// Nom de dépôt valide : proprietaire/nom, aucun segment ne commence par un point (« .. », « .x »).
+export function depotValide(depot) {
+  return typeof depot === "string" && NOM_DEPOT.test(depot) && depot.split("/").every((s) => !s.startsWith("."));
+}
+
 export class ErreurConflit extends Error {}
 export class ErreurGitHub extends Error {
   constructor(message, statut) { super(message); this.statut = statut; }
@@ -70,7 +75,9 @@ export function clientMemoire(jeton, reseau) {
     });
     if (rep.status === 409 || rep.status === 422) throw new ErreurConflit("Le fichier a changé entre-temps.");
     if (!rep.ok) throw new ErreurGitHub("Écriture GitHub impossible.", rep.status);
-    return true;
+    let nouveauSha = null;
+    try { nouveauSha = (await rep.json()).content.sha || null; } catch { nouveauSha = null; }
+    return nouveauSha || true;
   }
 
   return { lire, ecrire };
@@ -80,7 +87,7 @@ export function clientMemoire(jeton, reseau) {
 // Chaque fonction renvoie { ok, statut, donnees } ; une erreur réseau est levée.
 export function clientProduit(jeton, depot, reseau) {
   verifierJeton(jeton);
-  if (typeof depot !== "string" || !NOM_DEPOT.test(depot)) throw new Error("Nom de dépôt invalide.");
+  if (!depotValide(depot)) throw new Error("Nom de dépôt invalide.");
   if (depot.toLowerCase() === DEPOT.toLowerCase()) throw new Error("Le dépôt mémoire n'est pas un produit.");
   const h = entetes(jeton);
 
@@ -96,7 +103,7 @@ export function clientProduit(jeton, depot, reseau) {
     workflows: () => obtenir("/actions/workflows?per_page=10"),
     executionsWorkflow: (id, branche) => {
       if (!Number.isInteger(id)) throw new Error("Identifiant de workflow invalide.");
-      return obtenir(`/actions/workflows/${id}/runs?branch=${encodeURIComponent(branche)}&status=completed&exclude_pull_requests=true&per_page=1`);
+      return obtenir(`/actions/workflows/${id}/runs?branch=${encodeURIComponent(branche)}&event=push&status=completed&exclude_pull_requests=true&per_page=1`);
     },
     plusAncienneDemandeFusion: () => obtenir("/pulls?state=open&sort=created&direction=asc&per_page=1"),
     alertesDependabot: () => obtenir("/dependabot/alerts?state=open&severity=critical,high&per_page=1"),

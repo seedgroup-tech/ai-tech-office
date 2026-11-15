@@ -8,6 +8,8 @@ export const RAFRAICHISSEMENT_MS = 24 * 3600 * 1000;   // derniere_observation :
 const OBSERVATION_PEREMPTION_MS = 24 * 3600 * 1000;    // une observation sans échec depuis 24 h est retirée
 const CONTROLES_POUR_FERMER = 2;
 
+// Compteur lu dans un fichier : entier >= 0, sinon 0.
+const entier = (v) => (Number.isInteger(v) && v >= 0 ? v : 0);
 const estAlerteSentinel = (a) => a && typeof a === "object" && a.source === "sentinel";
 
 // Identifiant : SN-AAAAMMJJHHmm (heure de Douala) + 6 hexa du SHA-256 de l'empreinte.
@@ -27,7 +29,7 @@ function preuve(resultat, cible) {
 export function fusionner({ alertes, observation = {}, resultats, maintenant, sha6 = () => "000000" }) {
   const iso = isoDouala(maintenant);
   const ouvertes = (Array.isArray(alertes) ? alertes : []).filter((a) => estAlerteSentinel(a) && a.statut === "ouverte");
-  const etat = new Map(ouvertes.map((a) => [a.id, { ...a }]));
+  const etat = new Map(ouvertes.map((a) => [a.id, { ...a, controles_corrects: entier(a.controles_corrects) }]));
   const parEmpreinte = new Map();
   for (const a of ouvertes) if (!parEmpreinte.has(a.empreinte)) parEmpreinte.set(a.empreinte, etat.get(a.id));
   const changees = new Set();
@@ -35,11 +37,12 @@ export function fusionner({ alertes, observation = {}, resultats, maintenant, sh
   const fermees = [];
 
   // Une empreinte est en observation OU ouverte, jamais les deux ; observation périmée retirée.
-  const obs = {};
+  const obs = Object.create(null);
   for (const [e, v] of Object.entries(observation && typeof observation === "object" ? observation : {})) {
-    const vu = enMs(v && v.vu);
+    if (v === null || typeof v !== "object") continue;
+    const vu = enMs(v.vu);
     if (parEmpreinte.has(e) || !(maintenant.getTime() - vu <= OBSERVATION_PEREMPTION_MS)) continue;
-    obs[e] = { ...v };
+    obs[e] = { ...v, echecs: entier(v.echecs) };
   }
 
   for (const r of resultats.filter((x) => x.ok)) {
@@ -69,7 +72,7 @@ export function fusionner({ alertes, observation = {}, resultats, maintenant, sh
     // Alerte ouverte de ce projet et de ce type, non revue, avec preuve de correction.
     for (const ouverte of etat.values()) {
       if (ouverte.projet !== r.projet || ouverte.type !== r.type || vues.has(ouverte.empreinte) || !preuve(r, ouverte.cible)) continue;
-      ouverte.controles_corrects = (ouverte.controles_corrects || 0) + 1;
+      ouverte.controles_corrects = ouverte.controles_corrects + 1;
       changees.add(ouverte.id);
       if (ouverte.controles_corrects >= CONTROLES_POUR_FERMER) {
         ouverte.statut = "close";

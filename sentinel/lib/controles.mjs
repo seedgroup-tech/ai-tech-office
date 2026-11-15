@@ -12,6 +12,7 @@ export const SEUILS = Object.freeze({ site: 2, workflow: 1, pr: 1, dependabot: 1
 export const MAX_WORKFLOWS = 5;
 const SEPT_JOURS_MS = 7 * 24 * 3600 * 1000;
 const ECHECS_WORKFLOW = new Set(["failure", "timed_out", "startup_failure"]);
+const EVENEMENTS_SURS = new Set(["push", "schedule", "workflow_dispatch"]);
 const BRANCHE_VALIDE = /^[A-Za-z0-9_.\/-]{1,100}$/;
 
 export const empreinte = (projet, type, cible) => `${projet}|${type}|${cible}`;
@@ -24,10 +25,14 @@ export const brancheDe = (p) => (typeof p.branche === "string" && BRANCHE_VALIDE
 
 // Un site est contrôlable s'il est en https, sans identifiants, et n'est pas une API du bureau.
 export function siteValide(site) {
-  if (typeof site !== "string" || !site.startsWith("https://")) return false;
+  if (typeof site !== "string" || site.length > 200 || !site.startsWith("https://")) return false;
   try {
     const u = new URL(site);
-    return !u.username && !u.password && u.hostname !== HOTE_GITHUB && u.hostname !== HOTE_ANTHROPIC;
+    const h = u.hostname;
+    if (u.username || u.password || h === HOTE_GITHUB || h === HOTE_ANTHROPIC) return false;
+    if (h.startsWith("[") || /^\d+\.\d+\.\d+\.\d+$/.test(h)) return false;   // adresses IP
+    if (h === "localhost" || h.endsWith(".localhost") || h.endsWith(".") || !h.includes(".")) return false;
+    return true;
   } catch { return false; }
 }
 
@@ -70,6 +75,9 @@ export async function controleWorkflows(p, client) {
     const run = r.ok && Array.isArray(r.donnees.workflow_runs) ? r.donnees.workflow_runs[0] : null;
     if (!r.ok) { erreur = true; continue; }
     if (!run) continue;   // aucune exécution : inconnu
+    // Seules comptent les exécutions du dépôt lui-même (pas une PR d'un fork dont la branche s'appelle « main »).
+    const origine = run.head_repository && run.head_repository.full_name;
+    if (!EVENEMENTS_SURS.has(run.event) || typeof origine !== "string" || origine.toLowerCase() !== p.depot.toLowerCase()) continue;
     const cible = String(w.id);
     if (ECHECS_WORKFLOW.has(run.conclusion)) {
       anomalies.push({
