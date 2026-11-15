@@ -188,3 +188,15 @@ L'offre gratuite donne, par passage programmé, 10 ms de calcul et 50 appels ext
 
 1. **Deux clés obligatoires** pour l'organisation : A1 `GITHUB_TOKEN_MEMOIRE` (mémoire seulement, Contents en lecture et écriture) et A2 `GITHUB_TOKEN_ORG` (dépôts de l'organisation, lecture seule, sans Contents). Le repli de la mémoire sur `GITHUB_TOKEN_ORG` est supprimé : sans `GITHUB_TOKEN_MEMOIRE`, Sentinel ne fait rien. Ces règles priment sur les sections 2 et 12.
 2. **`/sante` minimal** : la réponse est seulement `{"ok":true}` (passage enregistré il y a moins de 2 heures) ou `{"ok":false}`. Aucun compteur, aucun état de veille, aucune date. Pas de Cloudflare Access pour Sentinel. Cela prime sur la section 9 et la décision D3.
+
+## 15. Limites connues de la version 1
+
+- **Couverture des workflows** : seules les exécutions déclenchées par un `push` sur la branche principale du dépôt lui-même sont prises en compte (correctif E1 de la Sécurité, contre les exécutions fabriquées par un fork). Un workflow lancé seulement par planification ou à la main reste « inconnu ». Au plus 5 workflows actifs par dépôt, toujours les 5 premiers de la liste.
+- **Un seul réveil par anomalie, pour toujours** (votre consigne, lecture stricte). Si l'écriture de l'alerte échoue après l'enregistrement des compteurs, l'anomalie est marquée comme réveillée sans qu'un agent l'ait été : elle ne réveillera plus jamais personne. C'est le prix de la protection contre les boucles.
+- **État anti-boucle dans la mémoire** : `etat/sentinel.json` est dans un dépôt où les agents peuvent écrire. Une consigne leur interdit d'y toucher (`ROUTINE.md`) et Sentinel valide strictement ce qu'il lit, mais un agent qui modifierait le champ `jour` pourrait remettre à zéro le plafond de 6 réveils par jour (les plafonds par anomalie et par projet restent actifs). Version 2 : mettre cet état hors de portée des agents.
+- **Rotation** : chaque dépôt est contrôlé une fois par heure (4 projets) ; une alerte GitHub met environ 2 heures à se fermer seule. Les demandes de fusion et Dependabot donnent une seule alerte par projet.
+- **Projets retirés ou inactifs** : leurs alertes ouvertes ne sont pas fermées automatiquement.
+- **Pause levée** : les alertes déjà ouvertes pendant la veille ne réveillent personne ; seules les nouvelles anomalies le font.
+- **Non vérifiable avant le déploiement** : le temps de calcul réel (limite de 10 ms de l'offre gratuite), le format exact de la réponse du déclencheur de routine (adresse de session) et l'en-tête `anthropic-beta`.
+- **Pire cas extrême** (conflits sur toutes les écritures et 6 réveils dans le même passage) : la dernière entrée du journal peut être abandonnée faute de budget ; les compteurs et les alertes restent cohérents.
+- **Volume de commits** : un signe de vie par heure au plus quand rien ne change (environ 24 commits par jour dans la mémoire), plus les changements réels.
