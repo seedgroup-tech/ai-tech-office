@@ -174,3 +174,12 @@ Relue le 15 novembre 2026 (M-008), avant tout code. Confrontée à : `etat/SCHEM
 - Modification 7 : la limite de temps de calcul de l'offre gratuite de Cloudflare est à vérifier au premier déploiement ; un passage à l'offre payante serait une dépense (N3), soumise au propriétaire.
 - Modification 11 : le cache partagé `caches.default` n'agit pas sur une adresse `workers.dev` ; `/sante` utilise un cache en mémoire de l'instance (5 minutes) et la dernière réponse connue si GitHub échoue.
 - Clé mémoire séparée et facultative `GITHUB_TOKEN_MEMOIRE` (section 2), recommandée dans `INSTALLATION.md`.
+
+## 13. Contraintes du propriétaire : offre gratuite de Cloudflare (15 nov. 2026)
+
+L'offre gratuite donne, par passage programmé, 10 ms de calcul et 50 appels externes au plus, et 5 tâches programmées par compte (Sentinel en utilise une). Sentinel est conçu pour tenir dedans dès la version 1 ; **aucun passage à l'offre payante sans l'accord écrit du propriétaire**. Ces règles priment sur les sections 4, 8 et 11 (modification 7).
+
+- **Budget de 40 appels par passage**, compté dans `lib/reseau.mjs` pour tout (mémoire, sites, GitHub, routine), dont 14 gardés pour les écritures dans la mémoire (avec relectures en cas de conflit) et les réveils. Budget des contrôles épuisé : arrêt propre, contrôles restants « inconnus », reprise au passage suivant.
+- **Rotation** : sites à chaque passage (en rotation eux aussi si le budget ne suffit pas, pointeur `rotation_sites`) ; GitHub **un seul projet par passage**, à tour de rôle (pointeur `rotation_github`). Avec 4 projets, chaque dépôt est contrôlé une fois par heure ; une alerte GitHub se ferme après 2 tours corrects de son projet.
+- **Requêtes GitHub minimales** (`per_page=1`, filtre sur la branche principale, champ facultatif `branche` du projet, sinon `main`) : liste des workflows (au plus 5 actifs), dernière exécution terminée de chacun ; plus ancienne demande de fusion ouverte ; première alerte Dependabot critique ou élevée. Au plus 8 appels par projet. Demandes de fusion et Dependabot : une seule anomalie par projet (cibles `anciennes` et `critique-ou-eleve`).
+- **Test du pire cas** : un passage ne dépasse jamais 40 appels, même avec 20 projets tous en panne et des conflits sur chaque écriture.
