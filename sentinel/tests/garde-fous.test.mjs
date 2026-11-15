@@ -112,3 +112,33 @@ test("adresse de session : seulement https://claude.ai/ et 300 caractères au pl
   assert.equal(adresseSession({ url: "https://claude.ai/" + "a".repeat(300) }), null);
   assert.equal(adresseSession(null), null);
 });
+
+test("M1 reveils_du_jour qui n'est pas un entier de 0 à 6 : traité comme 6, aucun réveil", () => {
+  for (const mauvais of ["x", -1, 7, 2.5, null, [], {}]) {
+    const r = decider([alerte(1)], sent({ jour: "2026-11-15", reveils_du_jour: mauvais }));
+    assert.equal(r.decisions[0].reveil, false, String(mauvais));
+    assert.match(r.decisions[0].raison, /plafond/);
+  }
+});
+
+test("M1 registres de réveils qui ne sont pas des objets simples : aucun réveil, note unique, registres non réécrits", () => {
+  for (const mauvais of [[], "x", 5, null]) {
+    const r = decider([alerte(1), alerte(2)], sent({ reveils_par_empreinte: mauvais }));
+    assert.ok(r.decisions.every((d) => !d.reveil));
+    assert.equal(r.notes.length, 1);
+    assert.equal(r.compteurs.reveils_par_empreinte, mauvais);
+  }
+  const r2 = decider([alerte(1)], sent({ dernier_reveil_projet: [] }));
+  assert.equal(r2.decisions[0].reveil, false);
+});
+
+test("M1 tables indexées par des données : sans prototype, clés « __proto__ » inoffensives", () => {
+  const registre = JSON.parse('{"__proto__": "2026-11-01T00:00:00+01:00"}');
+  const r = decider([alerte(1, { empreinte: "__proto__", projet: "constructor" })], sent({ reveils_par_empreinte: registre }));
+  assert.equal(r.decisions[0].reveil, false, "l'empreinte « __proto__ » est bien une entrée du registre");
+  assert.equal(Object.getPrototypeOf(r.compteurs.reveils_par_empreinte), null);
+  assert.equal(({}).polluee, undefined);
+  const s = decider([alerte(1, { projet: "constructor", empreinte: "constructor|site|c" })], sent());
+  assert.equal(s.decisions[0].reveil, true);
+  assert.equal(Object.getPrototypeOf(s.compteurs.dernier_reveil_projet), null);
+});

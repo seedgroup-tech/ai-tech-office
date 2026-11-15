@@ -452,3 +452,86 @@ test("/sante après une simulation : aucun nom de projet, aucune adresse", async
   assert.equal(j.service, "ai-tech-office-sentinel");
   assert.ok(!/Projet|example\.com|github\.com|p1/.test(sante));
 });
+
+test("E1 workflows : exécution d'un fork ou d'un événement non sûr = inconnu (ni anomalie, ni correct) ; requête avec event=push", async () => {
+  await sansLogs(async () => {
+    const monde = mondeSimule(1), h = horloge();
+    const wf = monde.depots["seedgroup-tech/p1"].workflows[0];
+    wf.conclusion = "failure"; wf.origine = "attaquant/p1";            // PR d'un fork sur une branche « main »
+    await passer(monde, h, 3);
+    assert.equal(alertesSN(monde).length, 0);
+    wf.origine = undefined; wf.event = "pull_request";
+    await passer(monde, h, 2);
+    assert.equal(alertesSN(monde).length, 0);
+    assert.ok(monde.appels.some((a) => a.url.includes("/runs?") && a.url.includes("event=push") && a.url.includes("per_page=1")));
+    // une vraie panne (push du dépôt, casse du nom ignorée) est vue ; un faux « success » d'un fork ne ferme rien
+    wf.event = "push"; wf.origine = "SeedGroup-Tech/P1";
+    await passer(monde, h);
+    assert.equal(alertesSN(monde).length, 1);
+    wf.conclusion = "success"; wf.origine = "attaquant/p1";
+    await passer(monde, h, 4);
+    assert.equal(alertesSN(monde)[0].statut, "ouverte");
+    assert.equal(alertesSN(monde)[0].controles_corrects, 0);
+    wf.event = "workflow_dispatch"; wf.origine = "seedgroup-tech/p1";
+    await passer(monde, h, 2);
+    assert.equal(alertesSN(monde)[0].statut, "close");
+  });
+});
+
+test("M1 projet nommé __proto__, constructor ou prototype : sauté avec note, aucun appel", async () => {
+  await sansLogs(async () => {
+    const projets = ["__proto__", "constructor", "prototype"].map((id) => ({ ...projet(1), id }));
+    const monde = creerMonde({ projets }), h = horloge();
+    monde.sites["p1.example.com"] = 500;
+    await passer(monde, h, 2);
+    assert.ok(!monde.appels.some((a) => a.url.includes("p1.example.com") || /repos\/seedgroup-tech\/p1/.test(a.url)));
+    assert.equal(sentinel(monde).notes.filter((n) => n.cle.startsWith("projet-interdit|")).length, 3);
+    assert.equal(({}).polluee, undefined);
+  });
+});
+
+test("M4 journal.json illisible, invalide ou trop gros : la surveillance continue, seul le journal est sauté, note unique", async () => {
+  for (const cas of ["lecture", "invalide"]) {
+    await sansLogs(async () => {
+      const monde = mondeSimule(1), h = horloge();
+      monde.sites["p1.example.com"] = 500;
+      if (cas === "lecture") monde.pannesLecture.add("etat/journal.json"); else monde.fichiers.get("etat/journal.json").valeur = { pas: "une liste" };
+      const avant = JSON.stringify(journal(monde));
+      await passer(monde, h, 4);
+      assert.equal(alertesSN(monde).length, 1, cas);
+      assert.equal(alertesSN(monde)[0].reveil.statut, "fait", cas);
+      assert.equal(monde.routine.appels.length, 1);
+      assert.ok(sentinel(monde).dernier_passage);
+      assert.equal(JSON.stringify(journal(monde)), avant);
+      assert.ok(!monde.ecritures.some((e) => e.chemin === "etat/journal.json"));
+      assert.equal(sentinel(monde).notes.filter((n) => n.cle === "sentinel|journal-illisible").length, 1);
+    });
+  }
+});
+
+test("F5 ordre : sentinel.json, puis alertes.json (réveil « prevu »), puis la routine, puis alerte mise à jour et journal ; échec d'écriture des alertes = aucun réveil", async () => {
+  await sansLogs(async () => {
+    const monde = mondeSimule(1), h = horloge();
+    monde.depots["seedgroup-tech/p1"].workflows[0].conclusion = "failure";
+    let vuAvantAppel = null, ordreAppels = [];
+    monde.routine.surAppel = () => { vuAvantAppel = JSON.parse(JSON.stringify(alertesSN(monde))); };
+    await passer(monde, h);
+    ordreAppels = monde.appels.filter((a) => a.methode !== "GET").map((a) => /(sentinel|alertes|journal)\.json|fire/.exec(a.url)[0]);
+    assert.deepEqual(ordreAppels, ["sentinel.json", "alertes.json", "fire", "alertes.json", "journal.json"]);
+    assert.equal(vuAvantAppel.length, 1);
+    assert.equal(vuAvantAppel[0].reveil.statut, "prevu");
+    assert.equal(alertesSN(monde)[0].reveil.statut, "fait");
+    assert.equal(alertesSN(monde)[0].reveil.session, SESSION);
+  });
+  await sansLogs(async () => {
+    const monde = mondeSimule(1), h = horloge();
+    monde.depots["seedgroup-tech/p1"].workflows[0].conclusion = "failure";
+    monde.pannesEcriture.add("etat/alertes.json");
+    const r = await passer(monde, h);
+    assert.equal(monde.routine.appels.length, 0);
+    assert.equal(r.reveils, 0);
+    assert.equal(sentinel(monde).reveils_du_jour, 1, "compteurs déjà enregistrés : anti-boucle");
+    assert.equal(alertesSN(monde).length, 0);
+    assert.ok(journal(monde).some((e) => e.texte.includes("alerte non enregistrée")));
+  });
+});

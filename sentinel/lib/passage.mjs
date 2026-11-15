@@ -1,7 +1,7 @@
 // Un passage complet de Sentinel : lecture, contrôles, décisions, écritures, réveils.
 // Ordre anti-boucle : les compteurs de réveil sont écrits dans sentinel.json AVANT l'appel de la routine.
 import { creerReseau } from "./reseau.mjs";
-import { clientMemoire, clientProduit, ErreurConflit, DEPOT } from "./github.mjs";
+import { clientMemoire, clientProduit, depotValide, ErreurConflit, DEPOT } from "./github.mjs";
 import { controlerSiteProjet, controlerGitHubProjet, siteValide } from "./controles.mjs";
 import { fusionner, appliquerAlertes, ajouterNote } from "./anomalies.mjs";
 import { decisionsReveil } from "./garde-fous.mjs";
@@ -12,7 +12,7 @@ import { nettoyer } from "./texte.mjs";
 const SIGNE_DE_VIE_MS = 3600 * 1000;
 const TAILLE_ALERTE_OCTETS = 700 * 1024;
 const MOTIF_ID = /^[A-Za-z0-9_.-]{1,64}$/;
-const MOTIF_DEPOT = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/;
+const ID_INTERDITS = new Set(["__proto__", "constructor", "prototype"]);
 const CLE_PAR_PROPRIETAIRE = { "seedgroup-tech": "org", "seedscaleup": "perso" };
 const SENTINEL_INITIAL = { pause: false, dernier_passage: null, reveils_du_jour: 0, notes: [] };
 const QUINZE_MIN_MS = 15 * 60 * 1000;
@@ -39,9 +39,10 @@ function preparerProjets(liste, env, reseau, notes) {
   const prets = [];
   for (const brut of liste) {
     if (!estObjet(brut) || brut.actif !== true || typeof brut.id !== "string" || !MOTIF_ID.test(brut.id)) continue;
+    if (ID_INTERDITS.has(brut.id)) { notes.push({ cle: "projet-interdit|" + brut.id, texte: "Identifiant de projet interdit, projet sauté." }); continue; }
     const p = { id: brut.id, nom: nettoyer(brut.nom, 60) || brut.id, depot: brut.depot, site: brut.site, branche: brut.branche };
     const note = (suffixe, texte) => notes.push({ cle: `${p.id}|${suffixe}`, texte: `${p.nom} : ${texte}` });
-    if (typeof p.depot !== "string" || !MOTIF_DEPOT.test(p.depot)) { note("depot", "dépôt invalide, projet sauté."); continue; }
+    if (!depotValide(p.depot)) { note("depot", "dépôt invalide, projet sauté."); continue; }
     if (p.depot.toLowerCase() === DEPOT.toLowerCase()) { note("memoire", "le dépôt mémoire n'est pas contrôlé comme produit, projet sauté."); continue; }
     const attendue = CLE_PAR_PROPRIETAIRE[p.depot.split("/")[0]];
     if (!attendue || attendue !== brut.proprietaire_cle) { note("cle", "clé GitHub incohérente avec le dépôt, projet sauté."); continue; }
@@ -87,11 +88,13 @@ async function modifierFichier(memoire, chemin, lu, modifier, message) {
   for (let essai = 0; essai < 2; essai++) {
     if (essai === 1) courant = await memoire.lire(chemin);
     const apres = modifier(courant.valeur);
-    if (apres === null) return false;
-    try { await memoire.ecrire(chemin, apres, courant.sha, message); return true; }
-    catch (e) { if (!(e instanceof ErreurConflit) || essai === 1) throw e; }
+    if (apres === null) return null;
+    try {
+      const sha = await memoire.ecrire(chemin, apres, courant.sha, message);
+      return { valeur: apres, sha: typeof sha === "string" ? sha : null };
+    } catch (e) { if (!(e instanceof ErreurConflit) || essai === 1) throw e; }
   }
-  return false;
+  return null;
 }
 
 function ajouterJournal(textes, now) {
@@ -132,9 +135,11 @@ export async function passage(env, { fetchFn = fetch, maintenant = () => new Dat
   const abandon = (statut) => { console.error("Sentinel : passage abandonné (" + statut + ")."); return { ...resume, statut, reveils: 0 }; };
 
   // 1. Lecture
-  let projetsF, alertesF, sentinelF, journalF;
+  let projetsF, alertesF, sentinelF;
+  // Le journal n'est pas indispensable : illisible ou trop gros, on continue sans lui.
+  const lectureJournal = memoire.lire("etat/journal.json").catch(() => null);
   try {
-    [projetsF, alertesF, sentinelF, journalF] = await Promise.all(["projets", "alertes", "sentinel", "journal"].map((n) => memoire.lire(`etat/${n}.json`)));
+    [projetsF, alertesF, sentinelF] = await Promise.all(["projets", "alertes", "sentinel"].map((n) => memoire.lire(`etat/${n}.json`)));
   } catch { return { ...abandon("lecture_impossible"), erreurs: 1 }; }
   if (!Array.isArray(projetsF.valeur)) return { ...abandon("projets_illisibles"), erreurs: 1 };
   if (alertesF.valeur !== null && !Array.isArray(alertesF.valeur)) return { ...abandon("alertes_illisibles"), erreurs: 1 };
@@ -144,9 +149,12 @@ export async function passage(env, { fetchFn = fetch, maintenant = () => new Dat
 
   // 2. Contrôles
   const notesNouvelles = [];
-  const trop_gros = { alertes: alertesF.size >= TAILLE_ALERTE_OCTETS, journal: journalF.size >= TAILLE_ALERTE_OCTETS };
+  const journalF = await lectureJournal;
+  const journalUtilisable = journalF !== null && Array.isArray(journalF.valeur);
+  const trop_gros = { alertes: alertesF.size >= TAILLE_ALERTE_OCTETS, journal: !journalF || journalF.size >= TAILLE_ALERTE_OCTETS };
+  if (!journalUtilisable) notesNouvelles.push({ cle: "sentinel|journal-illisible", texte: "journal.json illisible, invalide ou trop gros : journal non mis à jour." });
   if (trop_gros.alertes) notesNouvelles.push({ cle: "sentinel|taille-alertes", texte: "alertes.json dépasse 700 Ko : archivage à prévoir par le propriétaire." });
-  if (trop_gros.journal) notesNouvelles.push({ cle: "sentinel|taille-journal", texte: "journal.json dépasse 700 Ko : archivage à prévoir par le propriétaire." });
+  if (journalF && trop_gros.journal) notesNouvelles.push({ cle: "sentinel|taille-journal", texte: "journal.json dépasse 700 Ko : archivage à prévoir par le propriétaire." });
   const prets = preparerProjets(projetsF.valeur, env, reseau, notesNouvelles);
   // Budget : GitHub = UN projet par passage, à tour de rôle (au plus 8 appels) ;
   // sites = à chaque passage, dans la limite du budget restant (sinon rotation des sites).
@@ -168,7 +176,7 @@ export async function passage(env, { fetchFn = fetch, maintenant = () => new Dat
   for (const r of resultats) if (r.note) notesNouvelles.push(r.note);
   resume.projets = prets.length;
   resume.erreurs = resultats.filter((r) => r.erreur).length;
-  const hashes = {};
+  const hashes = Object.create(null);
   for (const r of resultats) for (const a of r.anomalies) hashes[a.empreinte] = await sha6(a.empreinte);
 
   // 3. Décisions, puis écriture de sentinel.json (compteurs AVANT tout réveil)
@@ -193,33 +201,46 @@ export async function passage(env, { fetchFn = fetch, maintenant = () => new Dat
     }
   }
 
-  // 4. Réveils (seulement les alertes créées dans ce passage)
+  // 4. Alertes AVANT les réveils : les alertes à réveiller sont écrites avec reveil.statut "prevu".
+  //    Si cette écriture échoue, aucun réveil (les compteurs sont déjà enregistrés : anti-boucle).
   const date = isoDouala(now);
-  for (const d of plan.decisions) {
-    if (!d.reveil) { d.alerte.reveil = { statut: "non_fait", raison: d.raison, date }; continue; }
-    const r = await declencher(env, d.alerte, reseau);
-    d.alerte.reveil = r.statut === "fait" ? { statut: "fait", ...(r.session ? { session: r.session } : {}), date } : { statut: "echec", raison: r.raison, date };
-    if (r.statut === "fait") resume.reveils++;
-  }
-
-  // 5. Alertes puis journal
   const { creees, modifiees, fermees } = plan.fusion;
   resume.nouvelles = creees.length;
   resume.fermees = fermees.length;
+  for (const d of plan.decisions) d.alerte.reveil = d.reveil ? { statut: "prevu", date } : { statut: "non_fait", raison: d.raison, date };
+  const ecrireAlertes = (lu, ajouts, changements) => modifierFichier(memoire, "etat/alertes.json", lu, (liste) => {
+    if (liste !== null && !Array.isArray(liste)) throw new Error("Alertes illisibles.");
+    const avant = liste || [];
+    const apres = appliquerAlertes(avant, { creees: ajouts, modifiees: changements });
+    return canon(apres) === canon(avant) ? null : apres;
+  }, "Sentinel : mise à jour des alertes");
   let alertesEcrites = true;
+  let etatAlertes = null;   // { valeur, sha } après notre écriture, si connu
   if (creees.length || modifiees.length) {
-    try {
-      await modifierFichier(memoire, "etat/alertes.json", alertesCourantes, (liste) => {
-        if (liste !== null && !Array.isArray(liste)) throw new Error("Alertes illisibles.");
-        const avant = liste || [];
-        const apres = appliquerAlertes(avant, { creees, modifiees });
-        return canon(apres) === canon(avant) ? null : apres;
-      }, "Sentinel : mise à jour des alertes");
-    } catch { alertesEcrites = false; resume.erreurs++; console.error("Sentinel : écriture des alertes impossible."); }
+    try { etatAlertes = await ecrireAlertes(alertesCourantes, creees, modifiees); }
+    catch { alertesEcrites = false; resume.erreurs++; console.error("Sentinel : écriture des alertes impossible."); }
   }
+
+  // 5. Réveils (seulement les alertes créées dans ce passage, et seulement si l'alerte est enregistrée)
+  const misesAJour = [];
+  for (const d of plan.decisions.filter((x) => x.reveil)) {
+    if (!alertesEcrites) { d.alerte.reveil = { statut: "non_fait", raison: "alerte non enregistrée", date }; continue; }
+    const r = await declencher(env, d.alerte, reseau);
+    d.alerte.reveil = r.statut === "fait" ? { statut: "fait", ...(r.session ? { session: r.session } : {}), date } : { statut: "echec", raison: r.raison, date };
+    misesAJour.push({ id: d.alerte.id, champs: { reveil: d.alerte.reveil } });
+    if (r.statut === "fait") resume.reveils++;
+  }
+  if (misesAJour.length) {
+    try {
+      const lu = etatAlertes && etatAlertes.sha ? etatAlertes : await memoire.lire("etat/alertes.json");
+      await ecrireAlertes(lu, [], misesAJour);
+    } catch { resume.erreurs++; console.error("Sentinel : mise à jour des réveils dans les alertes impossible."); }
+  }
+
+  // 6. Journal (sauté si illisible, invalide ou trop gros)
   const lignes = lignesJournal(plan);
-  if (!alertesEcrites && creees.length) lignes.push("Sentinel : alerte non enregistrée (écriture de alertes.json impossible).");
-  if (lignes.length && Array.isArray(journalF.valeur)) {
+  if (!alertesEcrites && creees.length) lignes.push("Sentinel : alerte non enregistrée (écriture de alertes.json impossible), aucun réveil.");
+  if (lignes.length && journalUtilisable) {
     try {
       await modifierFichier(memoire, "etat/journal.json", { valeur: journalF.valeur, sha: journalF.sha }, ajouterJournal(lignes, now), "Sentinel : journal");
     } catch { resume.erreurs++; console.error("Sentinel : écriture du journal impossible."); }

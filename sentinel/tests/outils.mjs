@@ -45,6 +45,8 @@ export function creerMonde({ projets, sentinel = sentinelInitial(), alertes = []
     depots: {},                // "seedgroup-tech/p1" -> { workflows, pulls, dependabot }
     routine: { appels: [], statut: 200, corps: { claude_code_session_url: SESSION } },
     memoireEnPanne: false,
+    pannesLecture: new Set(),   // chemins dont la lecture répond 500
+    pannesEcriture: new Set(),  // chemins dont l'écriture répond 500
     ecritures: [],             // { chemin, valeur, message }
   };
   let compteur = 0;
@@ -52,6 +54,8 @@ export function creerMonde({ projets, sentinel = sentinelInitial(), alertes = []
   function memoire(chemin, methode, init) {
     if (monde.memoireEnPanne) return new Response("{}", { status: 500 });
     const f = fichiers.get(chemin);
+    if (methode === "GET" && monde.pannesLecture.has(chemin)) return new Response("{}", { status: 500 });
+    if (methode === "PUT" && monde.pannesEcriture.has(chemin)) return new Response("{}", { status: 500 });
     if (methode === "GET") {
       if (!f) return new Response("{}", { status: 404 });
       const texte = JSON.stringify(f.valeur);
@@ -83,7 +87,7 @@ export function creerMonde({ projets, sentinel = sentinelInitial(), alertes = []
     const m = /^\/actions\/workflows\/(\d+)\/runs\?/.exec(suite);
     if (m) {
       const w = d.workflows.find((x) => String(x.id) === m[1]);
-      const runs = w && w.conclusion ? [{ conclusion: w.conclusion, name: w.name, html_url: `https://github.com/${depot}/actions/runs/1` }] : [];
+      const runs = w && w.conclusion ? [{ conclusion: w.conclusion, name: w.name, event: w.event || "push", head_repository: { full_name: w.origine || depot }, html_url: `https://github.com/${depot}/actions/runs/1` }] : [];
       return Response.json({ workflow_runs: runs });
     }
     if (suite.startsWith("/pulls?")) return Response.json(d.pulls.slice(0, 1));
@@ -107,6 +111,7 @@ export function creerMonde({ projets, sentinel = sentinelInitial(), alertes = []
     }
     if (u.hostname === "api.anthropic.com") {
       monde.routine.appels.push({ url, init });
+      if (monde.routine.surAppel) monde.routine.surAppel();
       if (monde.routine.statut !== 200) return new Response("{}", { status: monde.routine.statut });
       return Response.json(monde.routine.corps);
     }

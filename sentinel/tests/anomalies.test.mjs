@@ -28,7 +28,7 @@ test("2 échecs consécutifs de site : une alerte critique ouverte", () => {
   assert.equal(r2.alertes.length, 1);
   assert.equal(r2.alertes[0].niveau, "critique");
   assert.equal(r2.alertes[0].statut, "ouverte");
-  assert.deepEqual(r2.observation, {});
+  assert.deepEqual({ ...r2.observation }, {});
 });
 
 test("échecs non consécutifs : pas d'alerte", () => {
@@ -109,7 +109,7 @@ test("une empreinte n'est jamais en observation et ouverte à la fois ; observat
     "p2|site|y": { projet: "p2", type: "site", cible: "y", echecs: 1, vu: new Date(T0.getTime() - 30 * 3600e3).toISOString() },
   };
   const f = fusionner({ alertes: [ouverte], observation: obs, resultats: [], maintenant: T0 });
-  assert.deepEqual(f.observation, {});
+  assert.deepEqual({ ...f.observation }, {});
 });
 
 test("les alertes des autres sources ne sont jamais touchées ni fermées", () => {
@@ -135,4 +135,13 @@ test("notes : une par clé, jamais répétée, 50 au plus", () => {
   assert.equal(n.length, 1);
   for (let i = 0; i < 60; i++) n = ajouterNote(n, "k" + i, "t", T0);
   assert.equal(n.length, 50);
+});
+
+test("F8 compteurs illisibles dans une alerte : traités comme 0", () => {
+  for (const mauvais of ["abc", -5, null, 1.5, undefined, {}]) {
+    const ouverte = { id: "SN-1", source: "sentinel", statut: "ouverte", empreinte: anomalieSite.empreinte, projet: "p1", type: "site", cible: anomalieSite.cible, controles_corrects: mauvais, derniere_observation: T0.toISOString() };
+    const f = fusionner({ alertes: [ouverte], observation: { x: { projet: "p1", type: "site", cible: "z", echecs: "abc", vu: T0.toISOString() } }, resultats: [siteOk], maintenant: T0 });
+    assert.equal(f.modifiees[0].champs.controles_corrects, 1, String(mauvais));
+    assert.equal(f.fermees.length, 0);
+  }
 });
