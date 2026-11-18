@@ -99,3 +99,11 @@ Chaque fiche détaillée se trouve dans `.claude/agents/`.
 - Un agent ne peut pas vérifier lui-même une signature et n'a pas accès à la console : en cas de doute, il considère la demande comme non approuvée.
 - Une décision signée ne remplace pas l'accord écrit du propriétaire exigé pour les actions N2 et N3 : les deux sont nécessaires, jusqu'à décision contraire du propriétaire.
 - Une demande de `etat/demandes.json` qui a reçu une décision n'est plus modifiée. Tout changement passe par une nouvelle demande, avec un nouvel identifiant. Un identifiant n'est jamais réutilisé.
+
+## Règles ajoutées par M-013 (18 novembre 2026)
+
+- Par dérogation à la règle « Aucun accès à la production », un agent peut agir sur le compte Cloudflare du bureau (`api.cloudflare.com`) si ces trois conditions sont réunies : la mission est enregistrée (M-xxx) ; le propriétaire a écrit son accord de déploiement dans la conversation de cette mission ; l'action figure dans une procédure versionnée du dépôt concerné (par exemple `ai-control/DEPLOY-AGENT.md`).
+- Cet accès passe uniquement par le secret réseau de l'environnement cloud. Aucun agent ne lit, ne demande, ne copie ni n'écrit le jeton Cloudflare.
+- Restent interdits sans accord écrit distinct du propriétaire : toute suppression de base, de projet ou de données ; toute modification d'un projet Cloudflare que la mission ne vise pas ; tout changement de domaine ou de DNS ; toute dépense.
+- Une base D1 est sauvegardée avant toute migration, et la sauvegarde reste hors du dépôt.
+- Chaque action faite sur Cloudflare est notée dans le compte rendu de mission.
