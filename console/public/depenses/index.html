@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Contrôle des dépenses IA · AI TECH OFFICE</title>
+<meta name="referrer" content="no-referrer">
+<link rel="icon" href="../icone.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@600;700;800&family=Inter:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="depenses.css">
+</head>
+<body>
+<div class="wrap">
+<header class="haut">
+  <div>
+    <a class="retour" href="../">← Console du bureau</a>
+    <div class="marque">SEED Group · AI CONTROL (M-012)</div>
+    <h1>Dépenses et usage de l'IA</h1>
+    <p>Suivi des dépenses, des utilisateurs et des projets. Aucune source officielle n'est connectée : les données sont saisies ou importées, et chacune porte sa source.</p>
+  </div>
+  <div class="mois-bloc">
+    <label for="mois">Mois</label>
+    <input type="month" id="mois">
+  </div>
+</header>
+
+<nav class="vues" aria-label="Vues">
+  <a href="#apercu" data-nav="apercu">Aperçu</a>
+  <a href="#utilisateurs" data-nav="utilisateurs">Utilisateurs</a>
+  <a href="#projets" data-nav="projets">Projets</a>
+  <a href="#depenses" data-nav="depenses">Dépenses</a>
+  <a href="#alertes" data-nav="alertes">Alertes</a>
+</nav>
+
+<p class="msg" id="msg" role="status" aria-live="polite"></p>
+
+<main>
+
+<!-- Aperçu -->
+<section id="vue-apercu">
+  <div class="kpi" id="kpi"></div>
+  <div class="carte">
+    <div class="tete"><h2>Budget du mois</h2><p id="prov"></p></div>
+    <div id="budget"></div>
+  </div>
+  <div class="cols">
+    <div class="carte">
+      <div class="tete"><h2>Dépenses sur 6 mois</h2></div>
+      <div id="graph-mois"></div>
+    </div>
+    <div class="carte">
+      <div class="tete"><h2>Alertes</h2><a href="#alertes">Gérer les seuils</a></div>
+      <div id="alertes-resume"></div>
+    </div>
+  </div>
+  <div class="carte">
+    <div class="tete"><h2>Tokens API par utilisateur</h2><p>Mois sélectionné</p></div>
+    <div id="graph-users"></div>
+  </div>
+  <p class="note">Les abonnements et crédits sont des dépenses. Les coûts d'usage API sont déclarés à part et ne sont jamais additionnés aux dépenses, pour éviter les doublons.</p>
+</section>
+
+<!-- Utilisateurs -->
+<section id="vue-utilisateurs" hidden>
+  <div class="tete"><h2>Utilisateurs</h2><p>Tokens API et quotas d'abonnement du mois.</p></div>
+  <div class="tableau">
+    <table>
+      <thead><tr><th>Utilisateur</th><th>Tokens API</th><th>Quota abonnement</th><th>Coût API déclaré</th><th>Lignes</th><th>Sources</th></tr></thead>
+      <tbody id="t-users"></tbody>
+    </table>
+  </div>
+  <div class="cols">
+    <div class="carte">
+      <h3>Saisir un usage</h3>
+      <form id="f-usage" class="form">
+        <label>Date <input type="date" name="date" required></label>
+        <label>Utilisateur <input type="text" name="utilisateur" list="dl-users" required maxlength="80"></label>
+        <label>Projet <input type="text" name="projet" list="dl-projets" required maxlength="80"></label>
+        <label>Nature
+          <select name="nature">
+            <option value="api">Usage API (tokens)</option>
+            <option value="abonnement">Quota d'abonnement (sans coût)</option>
+          </select>
+        </label>
+        <label><span id="label-valeur">Tokens</span> <input type="number" name="valeur" min="0" step="1" required></label>
+        <label>Coût API (facultatif) <input type="number" name="cout" min="0" step="any"></label>
+        <label>Source
+          <select name="source">
+            <option value="manuel">Saisi</option>
+            <option value="reel">Réel (officiel)</option>
+            <option value="estime">Estimé</option>
+          </select>
+        </label>
+        <button type="submit" class="go">Enregistrer l'usage</button>
+      </form>
+    </div>
+    <div class="carte">
+      <h3>Importer un CSV d'usage</h3>
+      <p class="aide">Colonnes : date, utilisateur, projet, nature (api ou abonnement), valeur (ou tokens), cout (facultatif), source (facultatif : reel, importe, manuel, estime).</p>
+      <input type="file" id="usage-fichier" accept=".csv,text/csv">
+      <textarea id="usage-csv" rows="6" aria-label="Contenu CSV d'usage"></textarea>
+      <div class="actions"><button type="button" class="go" id="b-usage-import">Importer</button></div>
+      <ul class="rapport" id="usage-rapport"></ul>
+    </div>
+  </div>
+  <h3 class="sous">Usages saisis ce mois</h3>
+  <div class="tableau">
+    <table>
+      <thead><tr><th>Date</th><th>Utilisateur</th><th>Projet</th><th>Nature</th><th>Valeur</th><th>Coût</th><th>Source</th><th></th></tr></thead>
+      <tbody id="t-usages"></tbody>
+    </table>
+  </div>
+</section>
+
+<!-- Projets -->
+<section id="vue-projets" hidden>
+  <div class="tete"><h2>Projets</h2><p>Répartition de l'usage API par projet, pour le mois sélectionné.</p></div>
+  <div class="tableau">
+    <table>
+      <thead><tr><th>Projet</th><th>Tokens API</th><th>Coût API déclaré</th><th>Utilisateurs</th><th>Lignes</th><th>Sources</th></tr></thead>
+      <tbody id="t-projets"></tbody>
+    </table>
+  </div>
+  <div class="carte">
+    <div class="tete"><h2>Tokens API par projet</h2></div>
+    <div id="graph-projets"></div>
+  </div>
+</section>
+
+<!-- Dépenses -->
+<section id="vue-depenses" hidden>
+  <div class="tete"><h2>Dépenses</h2><p id="total-mois"></p></div>
+  <div class="tableau">
+    <table>
+      <thead><tr><th>Date</th><th>Type</th><th>Libellé</th><th>Montant</th><th>Source</th><th></th></tr></thead>
+      <tbody id="t-depenses"></tbody>
+    </table>
+  </div>
+  <div class="cols">
+    <div class="carte">
+      <h3>Ajouter une dépense</h3>
+      <form id="f-depense" class="form">
+        <label>Date <input type="date" name="date" required></label>
+        <label>Type
+          <select name="type">
+            <option value="abonnement">Abonnement</option>
+            <option value="mise_a_niveau">Mise à niveau</option>
+            <option value="credits">Crédits supplémentaires</option>
+            <option value="achat">Achat</option>
+            <option value="autre">Autre</option>
+          </select>
+        </label>
+        <label>Libellé <input type="text" name="libelle" required maxlength="120"></label>
+        <label>Montant <input type="number" name="montant" min="0" step="1" required></label>
+        <label>Source
+          <select name="source">
+            <option value="manuel">Saisi</option>
+            <option value="reel">Réel (facture ou relevé)</option>
+            <option value="estime">Estimé</option>
+          </select>
+        </label>
+        <button type="submit" class="go">Enregistrer la dépense</button>
+      </form>
+    </div>
+    <div class="carte">
+      <h3>Importer un CSV de dépenses</h3>
+      <p class="aide">Colonnes : date, type (abonnement, mise_a_niveau, credits, achat, autre), libelle, montant, source (facultatif). Dates AAAA-MM-JJ ou JJ/MM/AAAA.</p>
+      <input type="file" id="dep-fichier" accept=".csv,text/csv">
+      <textarea id="dep-csv" rows="6" aria-label="Contenu CSV des dépenses"></textarea>
+      <div class="actions"><button type="button" class="go" id="b-dep-import">Importer</button></div>
+      <ul class="rapport" id="dep-rapport"></ul>
+    </div>
+  </div>
+</section>
+
+<!-- Alertes -->
+<section id="vue-alertes" hidden>
+  <div class="cols">
+    <div class="carte">
+      <h3>Seuils et limites</h3>
+      <form id="f-config" class="form">
+        <label>Budget mensuel <input type="number" name="budgetMensuel" min="0" step="1"></label>
+        <label>Devise <input type="text" name="devise" maxlength="10"></label>
+        <label>Alerte budget à (%) <input type="number" name="seuilAlerte" min="1" max="100" step="1"></label>
+        <label>Alerte critique à (%) <input type="number" name="seuilCritique" min="1" max="200" step="1"></label>
+        <label>Usage anormal : multiple de la médiane <input type="number" name="ratioAnormal" min="1" step="0.1"></label>
+        <label>Limite de tokens par utilisateur (vide = aucune) <input type="number" name="limiteUtilisateurTokens" min="0" step="1"></label>
+        <label>Limite de tokens par projet (vide = aucune) <input type="number" name="limiteProjetTokens" min="0" step="1"></label>
+        <button type="submit" class="go">Enregistrer les seuils</button>
+      </form>
+    </div>
+    <div class="carte">
+      <h3>Alertes du mois sélectionné</h3>
+      <div id="alertes-liste"></div>
+    </div>
+  </div>
+</section>
+
+</main>
+</div>
+
+<datalist id="dl-users"></datalist>
+<datalist id="dl-projets"></datalist>
+<script src="depenses.js" type="module"></script>
+</body>
+</html>

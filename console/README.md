@@ -8,11 +8,12 @@ Page privée du propriétaire, hébergée sur Cloudflare Pages. Elle lit et écr
 | `functions/_middleware.js` | garde d'entrée : jeton Cloudflare Access obligatoire sur toutes les requêtes |
 | `functions/api/etat.js` | `GET /api/etat` : lecture de `etat/` |
 | `functions/api/decision.js` | `POST /api/decision` : décision signée du propriétaire |
+| `public/depenses/` | page « Dépenses IA » (M-012) : suivi des dépenses, des usages et des alertes, saisie manuelle et import CSV ; données dans le stockage du navigateur uniquement |
 | `lib/` | logique commune (vérification du jeton, signature HMAC, statuts, accès GitHub) |
 | `tests/` | tests sans dépendance |
 | `INSTALLATION.md` | guide d'installation pour le propriétaire |
 
-Tests : `cd console && node --test` (Node 22 ou plus récent).
+Tests : `cd console && node --test` (Node 22 ou plus récent). La logique de la page « Dépenses IA » est testée dans `tests/depenses.test.mjs`.
 
 Réglages lus dans `env` (secrets saisis par le propriétaire dans Cloudflare, jamais dans le code) : `GITHUB_TOKEN`, `DECISION_KEY`, `ACCESS_TEAM_DOMAIN`, `ACCESS_AUD`, `OWNER_EMAIL`.
 
