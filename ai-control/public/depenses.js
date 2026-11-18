@@ -167,7 +167,7 @@ function rendreBilan(c) {
     kpi("Tokens consommés", formaterCompact(b.tokens), `${formaterNombre(b.tokens)} tokens`),
     kpi("Valeur au tarif des tokens", formaterMontant(b.coutEstime, c.devise), "estimation de la plateforme"),
     kpi("Réellement dépensé", formaterMontant(b.depense, c.devise), b.part === null ? "" : `${b.part.toFixed(1).replace(".", ",")} % de cette valeur`),
-    kpi("Coût réel par million de tokens", b.parMillion === null ? "—" : formaterMontant(b.parMillion, c.devise), "dépenses ÷ tokens"),
+    kpi("Coût réel par million de tokens", b.parMillion === null ? "—" : `${new Intl.NumberFormat("fr-FR", { maximumFractionDigits: b.parMillion < 1 ? 4 : 2 }).format(b.parMillion)} ${c.devise}`, "dépenses ÷ tokens"),
   ].join("")}</div>
     <div class="budget-ligne"><span>Dépensé sur la valeur des tokens</span><span>${b.part === null ? "—" : esc(b.part.toFixed(1).replace(".", ",")) + " %"}</span></div>${barre(pct)}`;
 }
