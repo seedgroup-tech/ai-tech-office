@@ -11,8 +11,9 @@ import { ROLES } from "./roles.mjs";
 export const MAX_LOT = 500;
 const MAX_LIBELLE = 200;
 const MAX_TEXTE = 80;
+const MAX_CONVERSATION = 120;
 const COLONNES_DEPENSE = "id, date, type, libelle, montant, source";
-const COLONNES_USAGE = "id, date, utilisateur, projet, nature, valeur, cout, source";
+const COLONNES_USAGE = "id, date, utilisateur, projet, nature, valeur, cout, source, conversation";
 
 const reponse = (corps, statut = 200) => ({ statut, corps });
 const erreur = (statut, message) => ({ statut, corps: { erreur: message } });
@@ -41,7 +42,8 @@ export function preparerUsage(l, emailAppelant, role) {
     cout: l?.nature === "api" ? coutBrut : null, source: l?.source,
   };
   if (!valideUsage(candidat)) return null;
-  return { date: candidat.date, utilisateur, projet, nature: candidat.nature, valeur: candidat.valeur, cout: candidat.cout, source: candidat.source };
+  const conversation = typeof l?.conversation === "string" && l.conversation.trim() ? l.conversation.trim().slice(0, MAX_CONVERSATION) : null;
+  return { date: candidat.date, utilisateur, projet, nature: candidat.nature, valeur: candidat.valeur, cout: candidat.cout, source: candidat.source, conversation };
 }
 
 export function preparerConfig(c) {
@@ -110,8 +112,8 @@ export function ajouterDepenses(db, lignes, email) {
 
 export function ajouterUsages(db, lignes, email, role) {
   return ajouterLot(db, lignes, (l) => preparerUsage(l, email, role),
-    "INSERT INTO usages (id, date, utilisateur, projet, nature, valeur, cout, source, cree_par, cree_le) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-    (p) => [p.date, p.utilisateur, p.projet, p.nature, p.valeur, p.cout, p.source, email]);
+    "INSERT INTO usages (id, date, utilisateur, projet, nature, valeur, cout, source, conversation, cree_par, cree_le) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+    (p) => [p.date, p.utilisateur, p.projet, p.nature, p.valeur, p.cout, p.source, p.conversation, email]);
 }
 
 export async function supprimer(db, table, id, email, role) {

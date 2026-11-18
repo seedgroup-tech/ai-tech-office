@@ -132,9 +132,9 @@ export function agreger(usages, cle) {
     .sort((a, b) => b.tokens - a.tokens || a.nom.localeCompare(b.nom, "fr"));
 }
 
-// Où partent les crédits de sessions : coût et tokens API par projet, sur toute la période
-// (une ligne d'usage API = une session). Les parts sont en pourcentage du coût total.
-export function creditsParProjet(usages) {
+// Où partent les crédits de sessions : coût, tokens et nombre de sessions par projet.
+// Une ligne d'usage API = une session (conversation). `tri` : "cout", "tokens" ou "sessions".
+export function creditsParProjet(usages, tri = "cout") {
   const par = new Map();
   for (const u of usages) {
     if (u.nature !== "api") continue;
@@ -145,7 +145,8 @@ export function creditsParProjet(usages) {
     if (u.date > e.derniere) e.derniere = u.date;
     par.set(u.projet, e);
   }
-  const liste = [...par.values()].sort((a, b) => b.cout - a.cout || a.nom.localeCompare(b.nom, "fr"));
+  const cle = ["cout", "tokens", "sessions"].includes(tri) ? tri : "cout";
+  const liste = [...par.values()].sort((a, b) => b[cle] - a[cle] || b.cout - a.cout || a.nom.localeCompare(b.nom, "fr"));
   const total = liste.reduce((s, e) => s + e.cout, 0);
   return {
     total,
@@ -153,6 +154,15 @@ export function creditsParProjet(usages) {
     sessions: liste.reduce((s, e) => s + e.sessions, 0),
     projets: liste.map((e) => ({ ...e, part: total > 0 ? (e.cout / total) * 100 : 0 })),
   };
+}
+
+// Conversations (sessions) qui consomment : filtre par projet et par seuils, trié par `tri`.
+export function listerConversations(usages, { projet = "", tokensMin = 0, coutMin = 0, tri = "cout" } = {}) {
+  const cle = ["cout", "tokens", "date"].includes(tri) ? tri : "cout";
+  return usages
+    .filter((u) => u.nature === "api" && (!projet || u.projet === projet) && u.valeur >= tokensMin && (u.cout || 0) >= coutMin)
+    .map((u) => ({ id: u.id, conversation: u.conversation || "(sans titre)", projet: u.projet, tokens: u.valeur, cout: u.cout || 0, date: u.date }))
+    .sort((a, b) => (cle === "date" ? b.date.localeCompare(a.date) : b[cle] - a[cle]) || b.cout - a.cout || a.conversation.localeCompare(b.conversation, "fr"));
 }
 
 export function resumeMois(etat, mois) {

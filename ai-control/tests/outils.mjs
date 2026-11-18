@@ -1,6 +1,6 @@
 // Outils de test d'AI CONTROL : faux jetons Access et base SQLite en mémoire (même schéma que D1).
 // Toutes les clés sont générées à chaque exécution ; aucune vraie valeur.
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { DatabaseSync } from "node:sqlite";
 
@@ -39,7 +39,8 @@ export function fauxCerts(...paires) {
 
 // Base SQLite en mémoire, avec l'interface utilisée par D1 (prepare / bind / all / first / run / batch).
 export function fausseBase() {
-  const sql = readFileSync(fileURLToPath(new URL("../migrations/0001_init.sql", import.meta.url)), "utf8");
+  const dossier = fileURLToPath(new URL("../migrations/", import.meta.url));
+  const sql = readdirSync(dossier).filter((n) => n.endsWith(".sql")).sort().map((n) => readFileSync(dossier + n, "utf8")).join("\n");
   const db = new DatabaseSync(":memory:");
   db.exec(sql);
   const liaison = (texte, args) => ({

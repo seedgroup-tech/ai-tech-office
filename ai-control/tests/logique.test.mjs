@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   etatInitial, normaliser, lireEtat, lireCsv, parseNombre, parseDate,
-  importerDepenses, importerUsages, resumeMois, alertes, agreger, creditsParProjet, moisPrecedents, parJour, projeterMois,
+  importerDepenses, importerUsages, resumeMois, alertes, agreger, creditsParProjet, listerConversations, moisPrecedents, parJour, projeterMois,
 } from "../public/logique.mjs";
 
 function etatAvec({ budget = 0, depenses = [], usages = [], config = {} } = {}) {
@@ -153,4 +153,32 @@ test("crédits de sessions : sans usage, total nul et aucune division par zéro"
   const r = creditsParProjet([]);
   assert.equal(r.total, 0);
   assert.deepEqual(r.projets, []);
+});
+
+test("projets : classement par coût, par tokens ou par nombre de sessions", () => {
+  const u = [
+    use("2026-11-01", "e", 5000, { projet: "A", cout: 10 }),
+    use("2026-11-02", "e", 100, { projet: "B", cout: 50 }),
+    use("2026-11-03", "e", 100, { projet: "B", cout: 1 }),
+    use("2026-11-04", "e", 100, { projet: "B", cout: 1 }),
+  ];
+  assert.deepEqual(creditsParProjet(u, "cout").projets.map((p) => p.nom), ["B", "A"]);
+  assert.deepEqual(creditsParProjet(u, "tokens").projets.map((p) => p.nom), ["A", "B"]);
+  assert.deepEqual(creditsParProjet(u, "sessions").projets.map((p) => p.nom), ["B", "A"]);
+  assert.deepEqual(creditsParProjet(u, "n'importe quoi").projets.map((p) => p.nom), ["B", "A"]);
+});
+
+test("conversations : filtre par projet et par seuils, tri, titre manquant", () => {
+  const u = [
+    { ...use("2026-11-01", "e", 900, { projet: "A", cout: 5 }), conversation: "Alpha" },
+    { ...use("2026-11-02", "e", 100, { projet: "A", cout: 50 }), conversation: "Beta" },
+    { ...use("2026-11-03", "e", 400, { projet: "B", cout: 20 }) },
+    use("2026-11-04", "e", 99999, { projet: "A", nature: "abonnement" }),
+  ];
+  assert.deepEqual(listerConversations(u).map((x) => x.conversation), ["Beta", "(sans titre)", "Alpha"]);
+  assert.deepEqual(listerConversations(u, { tri: "tokens" }).map((x) => x.conversation), ["Alpha", "(sans titre)", "Beta"]);
+  assert.deepEqual(listerConversations(u, { tri: "date" }).map((x) => x.conversation), ["(sans titre)", "Beta", "Alpha"]);
+  assert.deepEqual(listerConversations(u, { projet: "A" }).map((x) => x.conversation), ["Beta", "Alpha"]);
+  assert.deepEqual(listerConversations(u, { tokensMin: 400 }).map((x) => x.conversation), ["(sans titre)", "Alpha"]);
+  assert.deepEqual(listerConversations(u, { coutMin: 30 }).map((x) => x.conversation), ["Beta"]);
 });

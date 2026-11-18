@@ -1,13 +1,13 @@
 // AI CONTROL (M-013) : page partagée. Les données viennent de l'API (/api), jamais du navigateur.
 // Les droits sont appliqués par le serveur ; ce script ne fait que masquer ce qui ne sert pas au rôle.
 import {
-  etatInitial, moisCourant, resumeMois, alertes, agreger, creditsParProjet, depensesDuMois, usagesDuMois,
+  etatInitial, moisCourant, resumeMois, alertes, agreger, creditsParProjet, listerConversations, depensesDuMois, usagesDuMois,
   depensesParMois, importerDepenses, importerUsages, formaterMontant, formaterNombre,
   dateValide, parJour, projeterMois, SOURCES, TYPES, NATURES,
 } from "./logique.mjs";
 
-const VUES = ["apercu", "utilisateurs", "projets", "credits", "depenses", "alertes"];
-const VUES_DIRECTION = ["credits", "depenses", "alertes"];
+const VUES = ["apercu", "projets", "conversations", "depenses", "alertes", "utilisateurs"];
+const VUES_DIRECTION = ["depenses", "alertes"];
 const $ = (id) => document.getElementById(id);
 
 let etat = etatInitial();
@@ -221,36 +221,31 @@ function rendreUtilisateurs() {
   $("dl-users").innerHTML = [...new Set(etat.usages.map((u) => u.utilisateur))].sort().map((v) => `<option value="${esc(v)}">`).join("");
 }
 
-function rendreProjets() {
-  const usages = usagesDuMois(etat, mois).filter((u) => u.nature === "api");
-  const liste = agreger(usages, "projet");
-  const c = etat.config;
-  $("t-projets").innerHTML = liste.length
-    ? liste.map((p) => `<tr>
-        <td data-label="Projet">${esc(p.nom)}</td>
-        <td data-label="Tokens API">${formaterNombre(p.tokens)}</td>
-        <td data-label="Coût API déclaré">${p.cout !== null ? formaterMontant(p.cout, c.devise) : "Non déclaré"}</td>
-        <td data-label="Utilisateurs">${new Set(usages.filter((u) => u.projet === p.nom).map((u) => u.utilisateur)).size}</td>
-        <td data-label="Lignes">${p.lignes}</td>
-        <td data-label="Sources">${p.sources.map(badge).join(" ")}</td></tr>`).join("")
-    : vide(6, "Aucun usage API ce mois.");
-  $("graph-projets").innerHTML = liste.length ? lignesBarres(liste) : `<p class="aide">Aucun usage API ce mois.</p>`;
-  $("dl-projets").innerHTML = [...new Set(etat.usages.map((u) => u.projet))].sort().map((v) => `<option value="${esc(v)}">`).join("");
-}
+const METRIQUES = {
+  cout: { titre: "Coût par projet", valeur: (p, devise) => formaterMontant(p.cout, devise), mesure: (p) => p.cout },
+  tokens: { titre: "Tokens par projet", valeur: (p) => formaterNombre(p.tokens), mesure: (p) => p.tokens },
+  sessions: { titre: "Sessions par projet", valeur: (p) => String(p.sessions), mesure: (p) => p.sessions },
+};
 
-function rendreCredits() {
+// Usages API de la période choisie ("tout" ou le mois sélectionné).
+const usagesApi = (periode) => (periode === "mois" ? usagesDuMois(etat, mois) : etat.usages).filter((u) => u.nature === "api");
+
+function rendreProjets() {
   const c = etat.config;
-  const r = creditsParProjet(etat.usages);
-  $("kpi-credits").innerHTML = [
-    kpi("Coût total des sessions", formaterMontant(r.total, c.devise), `${r.sessions} sessions`),
-    kpi("Projets", String(r.projets.length), "avec au moins une session"),
+  const tri = $("p-tri").value;
+  const m = METRIQUES[tri] || METRIQUES.cout;
+  const r = creditsParProjet(usagesApi($("p-periode").value), tri);
+  $("kpi-projets").innerHTML = [
+    kpi("Coût estimé", formaterMontant(r.total, c.devise), `${r.projets.length} projets`),
     kpi("Tokens", formaterNombre(r.tokens), "entrée, sortie et cache"),
+    kpi("Sessions", String(r.sessions), "conversations avec usage"),
   ].join("");
-  const max = Math.max(1, ...r.projets.map((p) => p.cout));
-  $("graph-credits").innerHTML = r.projets.length
-    ? r.projets.map((p) => `<div class="ligne-barre"><span>${esc(p.nom)}</span>${barre((p.cout / max) * 100)}<b>${esc(formaterMontant(p.cout, c.devise))}</b></div>`).join("")
-    : `<p class="aide">Aucune session enregistrée.</p>`;
-  $("t-credits").innerHTML = r.projets.length
+  $("titre-graph-projets").textContent = m.titre;
+  const max = Math.max(1, ...r.projets.map(m.mesure));
+  $("graph-projets").innerHTML = r.projets.length
+    ? r.projets.map((p) => `<div class="ligne-barre"><span>${esc(p.nom)}</span>${barre((m.mesure(p) / max) * 100)}<b>${esc(m.valeur(p, c.devise))}</b></div>`).join("")
+    : `<p class="aide">Aucun usage API sur cette période.</p>`;
+  $("t-projets").innerHTML = r.projets.length
     ? r.projets.map((p) => `<tr>
         <td data-label="Projet">${esc(p.nom)}</td>
         <td data-label="Coût">${esc(formaterMontant(p.cout, c.devise))}</td>
@@ -258,8 +253,37 @@ function rendreCredits() {
         <td data-label="Tokens">${esc(formaterNombre(p.tokens))}</td>
         <td data-label="Sessions">${p.sessions}</td>
         <td data-label="Dernière activité">${esc(p.derniere)}</td></tr>`).join("")
-    : vide(6, "Aucune session enregistrée.");
+    : vide(6, "Aucun usage API sur cette période.");
+  $("dl-projets").innerHTML = [...new Set(etat.usages.map((u) => u.projet))].sort().map((v) => `<option value="${esc(v)}">`).join("");
 }
+
+const NB_CONVERSATIONS = 300;
+
+function rendreConversations() {
+  const c = etat.config;
+  const select = $("c-projet");
+  const projets = [...new Set(etat.usages.filter((u) => u.nature === "api").map((u) => u.projet))].sort((a, b) => a.localeCompare(b, "fr"));
+  const choisi = projets.includes(select.value) ? select.value : "";
+  select.innerHTML = `<option value="">Tous les projets</option>` + projets.map((p) => `<option value="${esc(p)}">${esc(p)}</option>`).join("");
+  select.value = choisi;
+  const nombre = (id) => { const n = Number($(id).value); return Number.isFinite(n) && n > 0 ? n : 0; };
+  const liste = listerConversations(usagesApi($("c-periode").value), {
+    projet: choisi, tokensMin: nombre("c-tokens"), coutMin: nombre("c-cout"), tri: $("c-tri").value,
+  });
+  const total = liste.reduce((s, x) => s + x.cout, 0);
+  const jetons = liste.reduce((s, x) => s + x.tokens, 0);
+  $("conv-compte").textContent = `${liste.length} conversation(s) · ${formaterMontant(total, c.devise)} · ${formaterNombre(jetons)} tokens`
+    + (liste.length > NB_CONVERSATIONS ? ` · les ${NB_CONVERSATIONS} premières sont affichées` : "");
+  $("t-conversations").innerHTML = liste.length
+    ? liste.slice(0, NB_CONVERSATIONS).map((x) => `<tr>
+        <td data-label="Conversation">${esc(x.conversation)}</td>
+        <td data-label="Projet">${esc(x.projet)}</td>
+        <td data-label="Tokens">${esc(formaterNombre(x.tokens))}</td>
+        <td data-label="Coût">${esc(formaterMontant(x.cout, c.devise))}</td>
+        <td data-label="Dernière activité">${esc(x.date)}</td></tr>`).join("")
+    : vide(5, "Aucune conversation ne correspond à ces filtres.");
+}
+
 
 function rendreDepenses() {
   const c = etat.config;
@@ -299,8 +323,8 @@ function rendre() {
   rendreApercu();
   rendreUtilisateurs();
   rendreProjets();
+  rendreConversations();
   if (estDirection()) {
-    rendreCredits();
     rendreDepenses();
     rendreAlertes();
   }
@@ -431,6 +455,11 @@ $("mois").addEventListener("change", (e) => {
   rendre();
 });
 
+for (const id of ["p-periode", "p-tri"]) $(id).addEventListener("change", rendreProjets);
+for (const id of ["c-projet", "c-periode", "c-tri", "c-tokens", "c-cout"]) {
+  $(id).addEventListener(id === "c-tokens" || id === "c-cout" ? "input" : "change", () => { rendreConversations(); appliquerLargeurs(); });
+}
+for (const id of ["p-periode", "p-tri"]) $(id).addEventListener("change", appliquerLargeurs);
 addEventListener("hashchange", vue);
 
 // ---------- démarrage ----------

@@ -109,3 +109,11 @@ test("routes inconnues et identifiants mal formés : 404", async () => {
   assert.equal((await dir(db, "GET", "/autre")).statut, 404);
   assert.equal((await dir(db, "DELETE", "/usages/pas-un-id")).statut, 404);
 });
+
+test("usage : le titre de conversation est facultatif, nettoyé et borné à 120 caractères", () => {
+  const base = { date: "2026-11-01", utilisateur: "equipe", projet: "P", nature: "api", valeur: 10, cout: 1, source: "estime" };
+  assert.equal(preparerUsage(base, DIR, "direction").conversation, null);
+  assert.equal(preparerUsage({ ...base, conversation: "  Ma session  " }, DIR, "direction").conversation, "Ma session");
+  assert.equal(preparerUsage({ ...base, conversation: "x".repeat(300) }, DIR, "direction").conversation.length, 120);
+  assert.equal(preparerUsage({ ...base, conversation: 42 }, DIR, "direction").conversation, null);
+});

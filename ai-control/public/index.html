@@ -28,12 +28,12 @@
 </header>
 
 <nav class="vues" aria-label="Vues">
-    <a href="#apercu" data-nav="apercu">Aperçu</a>
-  <a href="#utilisateurs" data-nav="utilisateurs" id="nav-utilisateurs">Utilisateurs</a>
+  <a href="#apercu" data-nav="apercu">Aperçu</a>
   <a href="#projets" data-nav="projets">Projets</a>
-  <a href="#credits" data-nav="credits" data-dir>Crédits sessions</a>
+  <a href="#conversations" data-nav="conversations">Conversations</a>
   <a href="#depenses" data-nav="depenses" data-dir>Dépenses</a>
   <a href="#alertes" data-nav="alertes" data-dir>Alertes</a>
+  <a href="#utilisateurs" data-nav="utilisateurs" id="nav-utilisateurs">Utilisateurs</a>
 </nav>
 
 <p class="msg" id="msg" role="status" aria-live="polite"></p>
@@ -132,34 +132,55 @@
 
 <!-- Projets -->
 <section id="vue-projets" hidden>
-  <div class="tete"><h2>Projets</h2><p>Répartition de l'usage API par projet, pour le mois sélectionné.</p></div>
-  <div class="tableau">
-    <table>
-      <thead><tr><th>Projet</th><th>Tokens API</th><th>Coût API déclaré</th><th>Utilisateurs</th><th>Lignes</th><th>Sources</th></tr></thead>
-      <tbody id="t-projets"></tbody>
-    </table>
+  <div class="tete"><h2>Projets</h2><p>Quel projet consomme combien : coût, tokens et nombre de sessions.</p></div>
+  <div class="form filtres">
+    <label>Période
+      <select id="p-periode"><option value="tout">Toutes périodes</option><option value="mois">Mois sélectionné</option></select>
+    </label>
+    <label>Classer par
+      <select id="p-tri"><option value="cout">Coût</option><option value="tokens">Tokens</option><option value="sessions">Nombre de sessions</option></select>
+    </label>
   </div>
+  <div class="kpi" id="kpi-projets"></div>
   <div class="carte">
-    <div class="tete"><h2>Tokens API par projet</h2></div>
+    <div class="tete"><h2 id="titre-graph-projets">Coût par projet</h2></div>
     <div id="graph-projets"></div>
-  </div>
-</section>
-
-<!-- Crédits de sessions -->
-<section id="vue-credits" hidden data-dir>
-  <div class="tete"><h2>Où partent les crédits de sessions</h2><p>Coût par projet, toutes périodes confondues (une ligne = une session).</p></div>
-  <div class="kpi" id="kpi-credits"></div>
-  <div class="carte">
-    <div class="tete"><h2>Coût par projet</h2></div>
-    <div id="graph-credits"></div>
   </div>
   <div class="tableau">
     <table>
       <thead><tr><th>Projet</th><th>Coût</th><th>Part</th><th>Tokens</th><th>Sessions</th><th>Dernière activité</th></tr></thead>
-      <tbody id="t-credits"></tbody>
+      <tbody id="t-projets"></tbody>
     </table>
   </div>
-  <p class="note">Les montants sont ceux que la plateforme calcule pour chaque session au tarif des tokens (source « Estimé »). Ils ne sont pas additionnés aux dépenses du compte. Chaque session est datée de sa dernière activité : le coût d'une session longue n'est pas réparti sur les mois.</p>
+  <p class="note">Montants estimés par la plateforme au tarif des tokens (source « Estimé »), non additionnés aux dépenses du compte. Chaque session est datée de sa dernière activité : le coût d'une session longue n'est pas réparti sur les mois. Les tokens comptent l'entrée, la sortie et le cache.</p>
+</section>
+
+<!-- Conversations -->
+<section id="vue-conversations" hidden>
+  <div class="tete"><h2>Conversations</h2><p id="conv-compte"></p></div>
+  <div class="form filtres">
+    <label>Projet
+      <select id="c-projet"><option value="">Tous les projets</option></select>
+    </label>
+    <label>Période
+      <select id="c-periode"><option value="tout">Toutes périodes</option><option value="mois">Mois sélectionné</option></select>
+    </label>
+    <label>Tokens minimum
+      <input type="number" id="c-tokens" min="0" step="1" value="0" inputmode="numeric">
+    </label>
+    <label>Coût minimum (USD)
+      <input type="number" id="c-cout" min="0" step="1" value="0" inputmode="decimal">
+    </label>
+    <label>Classer par
+      <select id="c-tri"><option value="cout">Coût</option><option value="tokens">Tokens</option><option value="date">Dernière activité</option></select>
+    </label>
+  </div>
+  <div class="tableau">
+    <table>
+      <thead><tr><th>Conversation</th><th>Projet</th><th>Tokens</th><th>Coût</th><th>Dernière activité</th></tr></thead>
+      <tbody id="t-conversations"></tbody>
+    </table>
+  </div>
 </section>
 
 <!-- Dépenses -->
