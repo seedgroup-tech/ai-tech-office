@@ -286,7 +286,7 @@ export function alertes(etat, mois, aujourdhui = new Date().toISOString().slice(
   const fo = dernierForfait(etat);
   if (fo && fo.plafond > 0 && fo.depense !== null) {
     const part = (fo.depense / fo.plafond) * 100;
-    if (part >= 100) out.push({ niveau: "critique", categorie: "Forfait", message: `Plafond de dépenses mensuel du forfait atteint : ${formaterMontant(fo.depense, c.devise)} sur ${formaterMontant(fo.plafond, c.devise)} (relevé du ${fo.date}). Les tâches planifiées peuvent échouer tant qu'il n'est pas relevé ou que le mois ne change pas.` });
+    if (part >= 100) out.push({ niveau: "critique", categorie: "Forfait", message: `Plafond de dépenses mensuel du forfait atteint : ${formaterMontant(fo.depense, c.devise)} sur ${formaterMontant(fo.plafond, c.devise)} (relevé du ${fo.date}). Les tâches planifiées peuvent échouer tant que ce plafond n'est pas augmenté ou que le mois ne change pas.` });
     else if (part >= 80) out.push({ niveau: "attention", categorie: "Forfait", message: `${Math.round(part)} % du plafond de dépenses mensuel du forfait (${formaterMontant(fo.depense, c.devise)} sur ${formaterMontant(fo.plafond, c.devise)}, relevé du ${fo.date}).` });
   }
   if (fo && fo.semaine_pct !== null && fo.semaine_pct >= 80) {
