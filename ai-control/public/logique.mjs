@@ -99,7 +99,8 @@ export function moisPrecedents(mois, n) {
 }
 
 export const depensesDuMois = (etat, mois) => etat.depenses.filter((d) => d.date.slice(0, 7) === mois);
-export const usagesDuMois = (etat, mois) => etat.usages.filter((u) => u.date.slice(0, 7) === mois);
+// L'historique d'avant le suivi (lignes « cumul ») n'est pas rattachable à un mois : il n'apparaît que sur « Toutes périodes ».
+export const usagesDuMois = (etat, mois) => etat.usages.filter((u) => !u.cumul && u.date.slice(0, 7) === mois);
 const somme = (liste, f) => liste.reduce((s, x) => s + (f(x) || 0), 0);
 
 function mediane(valeurs) {
@@ -135,8 +136,9 @@ export function sessionsAgregees(usages) {
   for (const u of usages) {
     if (u.nature !== "api") continue;
     const cle = u.session || u.id;
-    const e = par.get(cle) || { cle, conversation: u.conversation || "(sans titre)", projet: u.projet, tokens: 0, cout: 0, date: "", cumul: false };
+    const e = par.get(cle) || { cle, conversation: u.conversation || "(sans titre)", projet: u.projet, tokens: 0, cache: 0, cout: 0, date: "", cumul: false };
     e.tokens += u.valeur;
+    e.cache += u.cache || 0;
     e.cout += u.cout || 0;
     if (u.date > e.date) { e.date = u.date; if (u.conversation) e.conversation = u.conversation; }
     if (u.cumul) e.cumul = true;
@@ -163,36 +165,45 @@ export function agreger(usages, cle) {
     .sort((a, b) => b.tokens - a.tokens || a.nom.localeCompare(b.nom, "fr"));
 }
 
-// Où partent les crédits de sessions : coût, tokens et nombre de sessions par projet.
-// Une ligne d'usage API = une session (conversation). `tri` : "cout", "tokens" ou "sessions".
-export function creditsParProjet(usages, tri = "cout") {
+// Coût réel moyen d'un token (en devise par token) : dépenses réelles ÷ tokens hors relectures de cache,
+// sur tout ce qui est enregistré. Tous les tokens sont comptés au même prix : c'est une approximation.
+export function tauxReel(etat) {
+  const depense = somme(etat.depenses, (d) => d.montant);
+  const tokens = somme(etat.usages.filter((u) => u.nature === "api"), (u) => u.valeur);
+  return tokens > 0 ? depense / tokens : 0;
+}
+
+// Où part la dépense : tokens, sessions et dépense réelle estimée (tokens × coût réel du token) par projet.
+// `tri` : "reel" ou "tokens" (même ordre), "sessions", ou "cout" (valeur catalogue, usage interne).
+export function creditsParProjet(usages, tri = "tokens", taux = 0) {
   const par = new Map();
   for (const x of sessionsAgregees(usages)) {
-    const e = par.get(x.projet) || { nom: x.projet, cout: 0, tokens: 0, sessions: 0, derniere: "" };
-    e.cout += x.cout;
+    const e = par.get(x.projet) || { nom: x.projet, tokens: 0, cache: 0, cout: 0, sessions: 0, derniere: "" };
     e.tokens += x.tokens;
+    e.cache += x.cache;
+    e.cout += x.cout;
     e.sessions += 1;
     if (x.date > e.derniere) e.derniere = x.date;
     par.set(x.projet, e);
   }
-  const cle = ["cout", "tokens", "sessions"].includes(tri) ? tri : "cout";
-  const liste = [...par.values()].sort((a, b) => b[cle] - a[cle] || b.cout - a.cout || a.nom.localeCompare(b.nom, "fr"));
-  const total = liste.reduce((s, e) => s + e.cout, 0);
+  const cle = tri === "sessions" ? "sessions" : tri === "cout" ? "cout" : "tokens";
+  const liste = [...par.values()].sort((a, b) => b[cle] - a[cle] || b.tokens - a.tokens || a.nom.localeCompare(b.nom, "fr"));
+  const tokens = liste.reduce((s, e) => s + e.tokens, 0);
   return {
-    total,
-    tokens: liste.reduce((s, e) => s + e.tokens, 0),
+    tokens,
+    reel: tokens * taux,
     sessions: liste.reduce((s, e) => s + e.sessions, 0),
-    projets: liste.map((e) => ({ ...e, part: total > 0 ? (e.cout / total) * 100 : 0 })),
+    projets: liste.map((e) => ({ ...e, reel: e.tokens * taux, part: tokens > 0 ? (e.tokens / tokens) * 100 : 0 })),
   };
 }
 
 // Conversations (sessions) qui consomment : filtre par projet et par seuils, trié par `tri`.
-export function listerConversations(usages, { projet = "", tokensMin = 0, coutMin = 0, tri = "cout" } = {}) {
-  const cle = ["cout", "tokens", "date"].includes(tri) ? tri : "cout";
+export function listerConversations(usages, { projet = "", tokensMin = 0, reelMin = 0, taux = 0, tri = "reel" } = {}) {
+  const parDate = tri === "date";
   return sessionsAgregees(usages)
-    .filter((x) => (!projet || x.projet === projet) && x.tokens >= tokensMin && x.cout >= coutMin)
-    .map((x) => ({ id: x.cle, conversation: x.conversation, projet: x.projet, tokens: x.tokens, cout: x.cout, date: x.date, cumul: x.cumul }))
-    .sort((a, b) => (cle === "date" ? b.date.localeCompare(a.date) : b[cle] - a[cle]) || b.cout - a.cout || a.conversation.localeCompare(b.conversation, "fr"));
+    .map((x) => ({ id: x.cle, conversation: x.conversation, projet: x.projet, tokens: x.tokens, reel: x.tokens * taux, date: x.date, cumul: x.cumul }))
+    .filter((x) => (!projet || x.projet === projet) && x.tokens >= tokensMin && x.reel >= reelMin)
+    .sort((a, b) => (parDate ? b.date.localeCompare(a.date) : b.tokens - a.tokens) || b.tokens - a.tokens || a.conversation.localeCompare(b.conversation, "fr"));
 }
 
 export function resumeMois(etat, mois) {
@@ -257,15 +268,14 @@ export function alertes(etat, mois, aujourdhui = new Date().toISOString().slice(
       }
     }
   }
-  const cr = creditsParProjet(api);
-  if (cr.total > 0 && cr.projets.length >= 2 && cr.projets[0].part >= 50) {
+  const taux = tauxReel(etat);
+  const cr = creditsParProjet(api, "tokens", taux);
+  if (cr.tokens > 0 && cr.projets.length >= 2 && cr.projets[0].part >= 50) {
     const top = cr.projets[0];
-    const lignes = sessionsAgregees(api).filter((x) => x.projet === top.nom).sort((a, b) => b.cout - a.cout);
-    const conv = lignes[0] && top.cout > 0 && lignes[0].cout / top.cout >= 0.6 ? ` Une seule conversation en est la cause : « ${lignes[0].conversation} ».` : "";
-    out.push({ niveau: "attention", categorie: "Projet", message: `Le projet ${top.nom} concentre ${Math.round(top.part)} % de la valeur au tarif catalogue du mois (${formaterMontant(top.cout, c.devise)} sur ${formaterMontant(cr.total, c.devise)}).${conv}` });
-  }
-  if (r.depense > 0 && r.coutApi !== null && r.coutApi > 3 * r.depense) {
-    out.push({ niveau: "info", categorie: "Estimation", message: `La valeur au tarif catalogue des sessions (${formaterMontant(r.coutApi, c.devise)}) vaut ${Math.round(r.coutApi / r.depense)} fois vos dépenses réelles du mois (${formaterMontant(r.depense, c.devise)}) : ce n'est pas une facture, seules vos dépenses réelles comptent.` });
+    const lignes = sessionsAgregees(api).filter((x) => x.projet === top.nom).sort((a, b) => b.tokens - a.tokens);
+    const conv = lignes[0] && lignes[0].tokens / top.tokens >= 0.6 ? ` Une seule conversation en est la cause : « ${lignes[0].conversation} ».` : "";
+    const reel = taux > 0 ? ` (environ ${formaterMontant(top.reel, c.devise)} de dépense réelle estimée)` : "";
+    out.push({ niveau: "attention", categorie: "Projet", message: `Le projet ${top.nom} concentre ${Math.round(top.part)} % de la consommation mesurée du mois${reel}.${conv}` });
   }
   if (r.budget <= 0) {
     out.push({ niveau: "info", categorie: "Configuration", message: "Aucun budget mensuel défini : les alertes de dépassement sont inactives. Renseignez-le dans Alertes." });
@@ -282,35 +292,41 @@ export function formaterCompact(n) {
   return formaterNombre(n);
 }
 
-// Tokens du mois, ce qu'ils valent au tarif des tokens, et ce qui a réellement été dépensé.
-export function bilanTokens(etat, mois) {
-  const r = resumeMois(etat, mois);
-  const coutEstime = r.coutApi || 0;
+// Dépense réelle, tokens et coût réel moyen du token ; consommation mesurée du mois (hors historique).
+export function bilanReel(etat, mois) {
+  const depenseTotale = somme(etat.depenses, (d) => d.montant);
+  const tokensTotal = somme(etat.usages.filter((u) => u.nature === "api"), (u) => u.valeur);
+  const taux = tauxReel(etat);
+  const tokensMois = somme(usagesDuMois(etat, mois).filter((u) => u.nature === "api"), (u) => u.valeur);
   return {
-    tokens: r.tokens,
-    coutEstime,
-    depense: r.depense,
-    part: coutEstime > 0 ? (r.depense / coutEstime) * 100 : null,
-    parMillion: r.tokens > 0 ? r.depense / (r.tokens / 1e6) : null,
+    depenseTotale,
+    tokensTotal,
+    taux,
+    parMillion: taux * 1e6,
+    depuis: etat.depenses.map((d) => d.date).sort()[0] || null,
+    depenseMois: somme(depensesDuMois(etat, mois), (d) => d.montant),
+    tokensMois,
+    reelMois: tokensMois * taux,
   };
 }
 
 const TITRE_GENERIQUE = /^(chat session|new session|pm|op|\(sans titre\))$/i;
 
 // Bonnes pratiques pour réduire la consommation, projet par projet, d'après les usages API.
-export function conseilsParProjet(usages, devise = "USD", max = 8) {
+export function conseilsParProjet(usages, devise = "USD", max = 8, taux = 0) {
   const api = usages.filter((u) => u.nature === "api");
-  const cr = creditsParProjet(api);
+  const cr = creditsParProjet(api, "tokens", taux);
+  const euros = (tokens) => (taux > 0 ? ` (environ ${formaterMontant(tokens * taux, devise)} de dépense réelle estimée)` : "");
   return cr.projets.slice(0, max).map((p) => {
-    const lignes = sessionsAgregees(api).filter((x) => x.projet === p.nom).sort((a, b) => b.cout - a.cout);
+    const lignes = sessionsAgregees(api).filter((x) => x.projet === p.nom).sort((a, b) => b.tokens - a.tokens);
     const top = lignes[0];
-    const partTop = p.cout > 0 ? (top.cout / p.cout) * 100 : 0;
+    const partTop = p.tokens > 0 ? (top.tokens / p.tokens) * 100 : 0;
     const conseils = [];
-    if (top.cout >= 100 && partTop >= 50) {
-      conseils.push(`La conversation « ${top.conversation} » pèse ${Math.round(partTop)} % de la valeur catalogue du projet (${formaterMontant(top.cout, devise)}, ${formaterCompact(top.tokens)} de tokens). Plus une conversation est longue, plus chaque message coûte cher : ouvrez une conversation par tâche et notez l'état d'avancement dans un fichier (CLAUDE.md ou notes) pour repartir proprement.`);
+    if (partTop >= 50 && (taux > 0 ? top.tokens * taux >= 20 : top.tokens >= 100000000)) {
+      conseils.push(`La conversation « ${top.conversation} » pèse ${Math.round(partTop)} % de la consommation du projet, soit ${formaterCompact(top.tokens)} de tokens${euros(top.tokens)}. Plus une conversation est longue, plus chaque message coûte cher : ouvrez une conversation par tâche et notez l'état d'avancement dans un fichier (CLAUDE.md ou notes) pour repartir proprement.`);
     }
-    if (cr.total > 0 && p.part >= 30) {
-      conseils.push(`Ce projet représente ${Math.round(p.part)} % de la valeur catalogue totale : fixez-lui une limite de tokens dans Alertes et gardez un modèle plus léger pour les tâches courantes.`);
+    if (cr.tokens > 0 && p.part >= 30) {
+      conseils.push(`Ce projet représente ${Math.round(p.part)} % de la consommation totale : fixez-lui une limite de tokens dans Alertes et gardez un modèle plus léger pour les tâches courantes.`);
     }
     if (p.sessions >= 5) {
       conseils.push(`${p.sessions} conversations : regroupez celles qui portent sur la même tâche, car chaque nouvelle conversation recharge son contexte.`);
@@ -319,7 +335,7 @@ export function conseilsParProjet(usages, devise = "USD", max = 8) {
       conseils.push("Certaines conversations n'ont pas de titre parlant (« Chat session », « New session »…) : nommez-les par tâche pour retrouver ce qui coûte.");
     }
     if (!conseils.length) conseils.push("Rien d'anormal : continuez avec une conversation par tâche.");
-    return { projet: p.nom, cout: p.cout, part: p.part, sessions: p.sessions, conseils };
+    return { projet: p.nom, reel: p.reel, tokens: p.tokens, part: p.part, sessions: p.sessions, conseils };
   });
 }
 

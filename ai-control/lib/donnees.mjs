@@ -13,7 +13,7 @@ const MAX_LIBELLE = 200;
 const MAX_TEXTE = 80;
 const MAX_CONVERSATION = 120;
 const COLONNES_DEPENSE = "id, date, type, libelle, montant, source";
-const COLONNES_USAGE = "id, date, utilisateur, projet, nature, valeur, cout, source, conversation, session, cumul";
+const COLONNES_USAGE = "id, date, utilisateur, projet, nature, valeur, cout, source, conversation, session, cumul, cache";
 
 const reponse = (corps, statut = 200) => ({ statut, corps });
 const erreur = (statut, message) => ({ statut, corps: { erreur: message } });

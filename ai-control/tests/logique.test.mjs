@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   etatInitial, normaliser, lireEtat, lireCsv, parseNombre, parseDate,
-  importerDepenses, importerUsages, resumeMois, alertes, agreger, creditsParProjet, listerConversations, bilanTokens, conseilsParProjet, formaterCompact, formaterNombre, usagesSemaine, moinsJours, sessionsAgregees, moisPrecedents, parJour, projeterMois,
+  importerDepenses, importerUsages, resumeMois, alertes, agreger, creditsParProjet, listerConversations, bilanReel, tauxReel, conseilsParProjet, formaterCompact, formaterNombre, usagesSemaine, moinsJours, sessionsAgregees, moisPrecedents, parJour, projeterMois,
 } from "../public/logique.mjs";
 
 function etatAvec({ budget = 0, depenses = [], usages = [], config = {} } = {}) {
@@ -133,41 +133,41 @@ test("projection de fin de mois : seulement pour le mois en cours", () => {
   assert.equal(projeterMois(0, "2026-11", "2026-11-01"), 0);
 });
 
-test("crédits de sessions : coût, tokens, sessions et part par projet, tous mois confondus", () => {
+test("projets : tokens, sessions, part et dépense réelle estimée (tokens × coût réel du token)", () => {
   const r = creditsParProjet([
     use("2026-10-01", "equipe", 1000, { projet: "A", cout: 30 }),
     use("2026-11-05", "equipe", 500, { projet: "A", cout: 10 }),
-    use("2026-11-06", "equipe", 200, { projet: "B", cout: 60 }),
+    use("2026-11-06", "equipe", 2500, { projet: "B", cout: 60 }),
     use("2026-11-06", "equipe", 99, { projet: "B", nature: "abonnement" }),
-  ]);
-  assert.equal(r.total, 100);
+  ], "tokens", 0.01);
+  assert.equal(r.tokens, 4000);
   assert.equal(r.sessions, 3);
-  assert.equal(r.tokens, 1700);
+  assert.equal(r.reel, 40);
   assert.deepEqual(r.projets.map((p) => p.nom), ["B", "A"]);
-  assert.equal(r.projets[0].part, 60);
+  assert.equal(r.projets[0].part, 62.5);
+  assert.equal(r.projets[0].reel, 25);
   assert.equal(r.projets[1].sessions, 2);
   assert.equal(r.projets[1].derniere, "2026-11-05");
 });
-
-test("crédits de sessions : sans usage, total nul et aucune division par zéro", () => {
+test("projets : sans usage, total nul et aucune division par zéro", () => {
   const r = creditsParProjet([]);
-  assert.equal(r.total, 0);
+  assert.equal(r.tokens, 0);
+  assert.equal(r.reel, 0);
   assert.deepEqual(r.projets, []);
 });
-
-test("projets : classement par coût, par tokens ou par nombre de sessions", () => {
+test("projets : classement par tokens (dépense réelle), par sessions ou par valeur catalogue", () => {
   const u = [
     use("2026-11-01", "e", 5000, { projet: "A", cout: 10 }),
     use("2026-11-02", "e", 100, { projet: "B", cout: 50 }),
     use("2026-11-03", "e", 100, { projet: "B", cout: 1 }),
     use("2026-11-04", "e", 100, { projet: "B", cout: 1 }),
   ];
-  assert.deepEqual(creditsParProjet(u, "cout").projets.map((p) => p.nom), ["B", "A"]);
   assert.deepEqual(creditsParProjet(u, "tokens").projets.map((p) => p.nom), ["A", "B"]);
+  assert.deepEqual(creditsParProjet(u, "reel").projets.map((p) => p.nom), ["A", "B"]);
   assert.deepEqual(creditsParProjet(u, "sessions").projets.map((p) => p.nom), ["B", "A"]);
-  assert.deepEqual(creditsParProjet(u, "n'importe quoi").projets.map((p) => p.nom), ["B", "A"]);
+  assert.deepEqual(creditsParProjet(u, "cout").projets.map((p) => p.nom), ["B", "A"]);
+  assert.deepEqual(creditsParProjet(u, "n'importe quoi").projets.map((p) => p.nom), ["A", "B"]);
 });
-
 test("conversations : filtre par projet et par seuils, tri, titre manquant", () => {
   const u = [
     { ...use("2026-11-01", "e", 900, { projet: "A", cout: 5 }), conversation: "Alpha" },
@@ -175,14 +175,14 @@ test("conversations : filtre par projet et par seuils, tri, titre manquant", () 
     { ...use("2026-11-03", "e", 400, { projet: "B", cout: 20 }) },
     use("2026-11-04", "e", 99999, { projet: "A", nature: "abonnement" }),
   ];
-  assert.deepEqual(listerConversations(u).map((x) => x.conversation), ["Beta", "(sans titre)", "Alpha"]);
-  assert.deepEqual(listerConversations(u, { tri: "tokens" }).map((x) => x.conversation), ["Alpha", "(sans titre)", "Beta"]);
-  assert.deepEqual(listerConversations(u, { tri: "date" }).map((x) => x.conversation), ["(sans titre)", "Beta", "Alpha"]);
-  assert.deepEqual(listerConversations(u, { projet: "A" }).map((x) => x.conversation), ["Beta", "Alpha"]);
-  assert.deepEqual(listerConversations(u, { tokensMin: 400 }).map((x) => x.conversation), ["(sans titre)", "Alpha"]);
-  assert.deepEqual(listerConversations(u, { coutMin: 30 }).map((x) => x.conversation), ["Beta"]);
+  const noms = (o) => listerConversations(u, o).map((x) => x.conversation);
+  assert.deepEqual(noms(), ["Alpha", "(sans titre)", "Beta"]);
+  assert.deepEqual(noms({ tri: "date" }), ["(sans titre)", "Beta", "Alpha"]);
+  assert.deepEqual(noms({ projet: "A" }), ["Alpha", "Beta"]);
+  assert.deepEqual(noms({ tokensMin: 400 }), ["Alpha", "(sans titre)"]);
+  assert.deepEqual(noms({ reelMin: 5, taux: 0.01 }), ["Alpha"]);
+  assert.equal(listerConversations(u, { taux: 0.01 })[0].reel, 9);
 });
-
 test("résumé du mois : nombre de projets actifs", () => {
   const e = etatAvec({ usages: [use("2026-11-02", "e", 10, { projet: "A" }), use("2026-11-03", "e", 10, { projet: "A" }), use("2026-11-04", "e", 10, { projet: "B" }), use("2026-10-04", "e", 10, { projet: "C" })] });
   assert.equal(resumeMois(e, "2026-11").projetsActifs, 2);
@@ -195,52 +195,63 @@ test("grands nombres lisibles", () => {
   assert.equal(formaterCompact(1234), formaterNombre(1234));
 });
 
-test("bilan : tokens du mois, valeur estimée, dépensé réellement et coût par million", () => {
+test("coût réel du token : dépenses réelles ÷ tokens, puis dépense du mois et consommation mesurée", () => {
   const e = etatAvec({
-    depenses: [dep("2026-11-05", 300)],
-    usages: [use("2026-11-02", "e", 2000000000, { cout: 1000 }), use("2026-10-02", "e", 5, { cout: 9 })],
+    depenses: [dep("2026-10-05", 100), dep("2026-11-05", 300)],
+    usages: [
+      { ...use("2026-11-02", "e", 1000000, { cout: 999 }), cumul: 1 },
+      use("2026-11-10", "e", 1000000, { cout: 5 }),
+      use("2026-11-11", "e", 2000000, { cout: 5, nature: "abonnement" }),
+    ],
   });
-  const b = bilanTokens(e, "2026-11");
-  assert.equal(b.tokens, 2000000000);
-  assert.equal(b.coutEstime, 1000);
-  assert.equal(b.depense, 300);
-  assert.equal(b.part, 30);
-  assert.equal(b.parMillion, 0.15);
-  assert.equal(bilanTokens(etatAvec(), "2026-11").part, null);
+  assert.equal(tauxReel(e), 0.0002);
+  const b = bilanReel(e, "2026-11");
+  assert.equal(b.depenseTotale, 400);
+  assert.equal(b.tokensTotal, 2000000);
+  assert.equal(b.parMillion, 200);
+  assert.equal(b.depuis, "2026-10-05");
+  assert.equal(b.depenseMois, 300);
+  assert.equal(b.tokensMois, 1000000);
+  assert.equal(b.reelMois, 200);
+  assert.equal(tauxReel(etatAvec()), 0);
 });
 
-test("alertes : concentration sur un projet, écart avec les dépenses réelles et budget non défini", () => {
+test("mois : l'historique « cumul » n'est jamais rattaché à un mois", () => {
+  const e = etatAvec({ usages: [{ ...use("2026-11-18", "e", 100), cumul: 1 }, use("2026-11-18", "e", 7)] });
+  assert.equal(resumeMois(e, "2026-11").tokens, 7);
+  assert.equal(resumeMois(e, "2026-11").projetsActifs, 1);
+});
+test("alertes : concentration sur un projet (tokens), pas d'alerte catalogue, budget non défini", () => {
   const e = etatAvec({
     depenses: [dep("2026-11-05", 100)],
     usages: [
       { ...use("2026-11-02", "e", 900, { projet: "Gros", cout: 900 }), conversation: "Session géante" },
-      use("2026-11-03", "e", 10, { projet: "Petit", cout: 50 }),
+      use("2026-11-03", "e", 50, { projet: "Petit", cout: 5000 }),
     ],
   });
   const al = alertes(e, "2026-11");
-  assert.deepEqual(al.map((a) => a.categorie), ["Projet", "Estimation", "Configuration"]);
+  assert.deepEqual(al.map((a) => a.categorie), ["Projet", "Configuration"]);
   assert.match(al[0].message, /Gros concentre 95 %/);
+  assert.match(al[0].message, /94,74/);
   assert.match(al[0].message, /Session géante/);
-  assert.equal(al[1].niveau, "info");
   assert.equal(alertes(etatAvec({ budget: 1000, depenses: [dep("2026-11-05", 10)] }), "2026-11").length, 0);
 });
-
 test("bonnes pratiques par projet : conversation dominante, poids du projet, titres sans nom", () => {
   const u = [
-    { ...use("2026-10-01", "e", 5000, { projet: "A", cout: 900 }), conversation: "Chat session" },
-    { ...use("2026-10-02", "e", 50, { projet: "A", cout: 10 }), conversation: "Petite" },
-    { ...use("2026-10-03", "e", 10, { projet: "B", cout: 1 }), conversation: "Courte" },
+    { ...use("2026-10-01", "e", 50000000, { projet: "A", cout: 900 }), conversation: "Chat session" },
+    { ...use("2026-10-02", "e", 500000, { projet: "A", cout: 10 }), conversation: "Petite" },
+    { ...use("2026-10-03", "e", 100, { projet: "B", cout: 1 }), conversation: "Courte" },
   ];
-  const r = conseilsParProjet(u);
+  const r = conseilsParProjet(u, "USD", 8, 0.0000008);
   assert.deepEqual(r.map((p) => p.projet), ["A", "B"]);
   assert.equal(r[0].conseils.length, 3);
   assert.match(r[0].conseils[0], /Chat session/);
+  assert.match(r[0].conseils[0], /environ 40 USD/);
   assert.match(r[0].conseils[1], /fixez-lui une limite/);
   assert.match(r[0].conseils[2], /titre parlant/);
   assert.deepEqual(r[1].conseils, ["Rien d'anormal : continuez avec une conversation par tâche."]);
   assert.deepEqual(conseilsParProjet([]), []);
 });
-
 test("jours : moins n jours, y compris à cheval sur un mois", () => {
   assert.equal(moinsJours("2026-11-18", 6), "2026-11-12");
   assert.equal(moinsJours("2026-03-02", 6), "2026-02-24");

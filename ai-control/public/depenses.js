@@ -1,7 +1,7 @@
 // AI CONTROL (M-013) : page partagée. Les données viennent de l'API (/api), jamais du navigateur.
 // Les droits sont appliqués par le serveur ; ce script ne fait que masquer ce qui ne sert pas au rôle.
 import {
-  etatInitial, moisCourant, resumeMois, alertes, agreger, creditsParProjet, listerConversations, bilanTokens, conseilsParProjet, formaterCompact, usagesSemaine, depensesDuMois, usagesDuMois,
+  etatInitial, moisCourant, resumeMois, alertes, agreger, creditsParProjet, listerConversations, bilanReel, tauxReel, conseilsParProjet, formaterCompact, usagesSemaine, depensesDuMois, usagesDuMois,
   depensesParMois, importerDepenses, importerUsages, formaterMontant, formaterNombre,
   dateValide, parJour, projeterMois, SOURCES, TYPES, NATURES,
 } from "./logique.mjs";
@@ -126,8 +126,8 @@ function rendreApercu() {
     kpi("Restant", r.budget > 0 ? formaterMontant(r.restant, c.devise) : "—", depassement ? "dépassement" : "disponible", depassement ? "critique" : ""),
   ];
   if (dir) {
-    cartes.push(kpi("Projets actifs", formaterNombre(r.projetsActifs), "avec un usage ce mois"));
-    cartes.push(kpi("Tokens API", aApi ? formaterCompact(r.tokens) : "—", aApi ? `${formaterNombre(r.tokens)} tokens` : "aucun usage saisi"));
+    cartes.push(kpi("Projets actifs", aApi ? formaterNombre(r.projetsActifs) : "—", aApi ? "avec un usage mesuré ce mois" : "mesure par période depuis le 18 nov. 2026"));
+    cartes.push(kpi("Tokens API (hors relectures)", aApi ? formaterCompact(r.tokens) : "—", aApi ? `${formaterNombre(r.tokens)} tokens` : "mesure par période depuis le 18 nov. 2026"));
   } else {
     cartes.push(kpi("Mes tokens API", aApi ? formaterNombre(r.tokens) : "—", aApi ? "ce mois" : "aucun usage saisi"));
   }
@@ -149,8 +149,11 @@ function rendreApercu() {
 
   if (dir) {
     $("graph-mois").innerHTML = svgMois(depensesParMois(etat, mois, 6), c.devise);
-    const projets = creditsParProjet(usagesDuMois(etat, mois).filter((u) => u.nature === "api"), "tokens").projets.slice(0, 8);
-    $("graph-projets-apercu").innerHTML = projets.length ? lignesBarres(projets) : `<p class="aide">Aucun usage API ce mois.</p>`;
+    const projets = creditsParProjet(etat.usages.filter((u) => u.nature === "api"), "tokens", tauxReel(etat)).projets.slice(0, 8);
+    const max = Math.max(1, ...projets.map((p) => p.tokens));
+    $("graph-projets-apercu").innerHTML = projets.length
+      ? projets.map((p) => `<div class="ligne-barre"><span>${esc(p.nom)}</span>${barre((p.tokens / max) * 100)}<b>${esc(formaterMontant(p.reel, c.devise))} · ${esc(p.part.toFixed(1).replace(".", ","))} %</b></div>`).join("")
+      : `<p class="aide">Aucun usage API enregistré.</p>`;
     rendreBilan(c);
     rendreBonnesPratiques(c);
   } else {
@@ -159,16 +162,16 @@ function rendreApercu() {
 }
 
 function rendreBilan(c) {
-  const b = bilanTokens(etat, mois);
-  if (!b.tokens) { $("bilan").innerHTML = `<p class="aide">Aucun usage API ce mois.</p>`; return; }
-  const pct = b.part === null ? 0 : Math.min(100, b.part);
+  const b = bilanReel(etat, mois);
+  if (!b.tokensTotal || !b.depenseTotale) { $("bilan").innerHTML = `<p class="aide">Il faut des dépenses et des usages API pour calculer le coût réel du token.</p>`; return; }
+  const parMillion = `${new Intl.NumberFormat("fr-FR", { maximumFractionDigits: b.parMillion < 1 ? 4 : 2 }).format(b.parMillion)} ${c.devise}`;
   $("bilan").innerHTML = `<div class="kpi">${[
-    kpi("Tokens consommés", formaterCompact(b.tokens), `${formaterNombre(b.tokens)} tokens`),
-    kpi("Valeur au tarif catalogue", formaterMontant(b.coutEstime, c.devise), "calculée par la plateforme, non facturée"),
-    kpi("Réellement dépensé", formaterMontant(b.depense, c.devise), b.part === null ? "" : `${b.part.toFixed(1).replace(".", ",")} % de cette valeur`),
-    kpi("Coût réel par million de tokens", b.parMillion === null ? "—" : `${new Intl.NumberFormat("fr-FR", { maximumFractionDigits: b.parMillion < 1 ? 4 : 2 }).format(b.parMillion)} ${c.devise}`, "dépenses ÷ tokens"),
+    kpi(`Dépensé depuis le ${b.depuis}`, formaterMontant(b.depenseTotale, c.devise), "toutes les dépenses enregistrées"),
+    kpi("Tokens consommés (hors relectures)", formaterCompact(b.tokensTotal), `${formaterNombre(b.tokensTotal)} tokens`),
+    kpi("Coût réel par million de tokens", parMillion, "dépenses ÷ tokens"),
+    kpi("Ce mois-ci", formaterMontant(b.depenseMois, c.devise), b.tokensMois > 0 ? `${formaterCompact(b.tokensMois)} de tokens mesurés, soit environ ${formaterMontant(b.reelMois, c.devise)}` : "consommation mesurée à partir du 18 nov. 2026"),
   ].join("")}</div>
-    <div class="budget-ligne"><span>Dépensé sur la valeur des tokens</span><span>${b.part === null ? "—" : esc(b.part.toFixed(1).replace(".", ",")) + " %"}</span></div>${barre(pct)}`;
+    <p class="aide">Méthode : coût réel moyen du token = dépenses réelles ÷ tokens hors relectures de cache. La dépense d'un projet est ses tokens × ce coût. C'est une approximation : tous les tokens sont comptés au même prix, quel que soit le modèle.</p>`;
 }
 
 const CONSEILS_GENERAUX = [
@@ -180,10 +183,10 @@ const CONSEILS_GENERAUX = [
 ];
 
 function rendreBonnesPratiques(c) {
-  const projets = conseilsParProjet(etat.usages, c.devise);
+  const projets = conseilsParProjet(etat.usages, c.devise, 8, tauxReel(etat));
   $("bonnes-pratiques").innerHTML = `<ul class="conseils">${CONSEILS_GENERAUX.map((t) => `<li>${esc(t)}</li>`).join("")}</ul>`
     + (projets.length
-      ? projets.map((p) => `<div class="bp"><h3>${esc(p.projet)} <small>${esc(formaterMontant(p.cout, c.devise))} · ${esc(p.part.toFixed(1).replace(".", ","))} % · ${p.sessions} conversation(s)</small></h3><ul class="conseils">${p.conseils.map((t) => `<li>${esc(t)}</li>`).join("")}</ul></div>`).join("")
+      ? projets.map((p) => `<div class="bp"><h3>${esc(p.projet)} <small>${esc(formaterMontant(p.reel, c.devise))} · ${esc(p.part.toFixed(1).replace(".", ","))} % · ${p.sessions} conversation(s)</small></h3><ul class="conseils">${p.conseils.map((t) => `<li>${esc(t)}</li>`).join("")}</ul></div>`).join("")
       : `<p class="aide">Aucune conversation enregistrée.</p>`);
 }
 
@@ -230,7 +233,7 @@ function rendreUtilisateurs() {
         <td data-label="Utilisateur">${esc(u.nom)}</td>
         <td data-label="Tokens API">${u.tokens ? formaterNombre(u.tokens) : "—"}</td>
         <td data-label="Quota abonnement">${u.quota ? formaterNombre(u.quota) : "—"}</td>
-        <td data-label="Coût API (catalogue ou déclaré)">${u.cout !== null ? formaterMontant(u.cout, c.devise) : "Non déclaré"}</td>
+        <td data-label="Dépense réelle estimée">${u.tokens ? esc(montantReel(u.tokens * tauxAffiche(), c)) : "—"}</td>
         <td data-label="Lignes">${u.lignes}</td>
         <td data-label="Sources">${u.sources.map(badge).join(" ")}</td></tr>`).join("")
     : vide(6, "Aucun usage ce mois. Saisissez-le ci-dessous ou importez un CSV.");
@@ -243,7 +246,7 @@ function rendreUtilisateurs() {
         <td data-label="Projet">${esc(u.projet)}</td>
         <td data-label="Nature">${esc(NATURES[u.nature])}</td>
         <td data-label="Valeur">${esc(formaterNombre(u.valeur))}</td>
-        <td data-label="Coût">${u.cout !== null ? esc(formaterMontant(u.cout, c.devise)) : "—"}</td>
+        <td data-label="Dépense réelle estimée">${u.nature === "api" ? esc(montantReel(u.valeur * tauxAffiche(), c)) : "—"}</td>
         <td data-label="Source">${badge(u.source)}</td>
         <td><button type="button" class="non petit" data-suppr="usages" data-id="${esc(u.id)}">Supprimer</button></td></tr>`).join("")
     : vide(8, "Aucun usage saisi ce mois.");
@@ -252,38 +255,49 @@ function rendreUtilisateurs() {
 }
 
 const METRIQUES = {
-  cout: { titre: "Valeur au tarif catalogue par projet", valeur: (p, devise) => formaterMontant(p.cout, devise), mesure: (p) => p.cout },
-  tokens: { titre: "Tokens par projet", valeur: (p) => formaterNombre(p.tokens), mesure: (p) => p.tokens },
+  reel: { titre: "Dépense réelle estimée par projet", valeur: (p, devise) => formaterMontant(p.reel, devise), mesure: (p) => p.tokens },
   sessions: { titre: "Sessions par projet", valeur: (p) => String(p.sessions), mesure: (p) => p.sessions },
 };
 
-// Usages API de la période choisie ("tout" ou le mois sélectionné).
+// Usages API de la période choisie ("tout", le mois sélectionné ou les 7 derniers jours).
 const usagesApi = (periode) => (periode === "semaine" ? usagesSemaine(etat.usages, aujourdhui()) : periode === "mois" ? usagesDuMois(etat, mois) : etat.usages).filter((u) => u.nature === "api");
+
+// Le collaborateur ne voit que ses propres tokens : le coût réel du token se calcule sur l'ensemble, il n'est donc pas affiché.
+const tauxAffiche = () => (estDirection() ? tauxReel(etat) : 0);
+const montantReel = (v, c) => (estDirection() ? formaterMontant(v, c.devise) : "—");
+
+function messageVide(periode) {
+  return periode === "tout"
+    ? "Aucun usage API enregistré."
+    : `Aucune consommation mesurée sur cette période : le suivi par période a démarré le 18 novembre 2026 (un relevé chaque lundi). <button type="button" class="petit" data-voir-tout>Voir toutes périodes</button>`;
+}
 
 function rendreProjets() {
   const c = etat.config;
+  const periode = $("p-periode").value;
   const tri = $("p-tri").value;
-  const m = METRIQUES[tri] || METRIQUES.cout;
-  const r = creditsParProjet(usagesApi($("p-periode").value), tri);
+  const m = METRIQUES[tri] || METRIQUES.reel;
+  const taux = tauxAffiche();
+  const r = creditsParProjet(usagesApi(periode), tri, taux);
   $("kpi-projets").innerHTML = [
-    kpi("Valeur au tarif catalogue", formaterMontant(r.total, c.devise), `${r.projets.length} projets · non facturée`),
-    kpi("Tokens", formaterNombre(r.tokens), "entrée, sortie et cache"),
+    kpi("Dépense réelle estimée", montantReel(r.reel, c), `${r.projets.length} projets`),
+    kpi("Tokens (hors relectures)", formaterCompact(r.tokens), `${formaterNombre(r.tokens)} tokens`),
     kpi("Sessions", String(r.sessions), "conversations avec usage"),
   ].join("");
   $("titre-graph-projets").textContent = m.titre;
   const max = Math.max(1, ...r.projets.map(m.mesure));
   $("graph-projets").innerHTML = r.projets.length
-    ? r.projets.map((p) => `<div class="ligne-barre"><span>${esc(p.nom)}</span>${barre((m.mesure(p) / max) * 100)}<b>${esc(m.valeur(p, c.devise))}</b></div>`).join("")
-    : `<p class="aide">Aucun usage API sur cette période.</p>`;
+    ? r.projets.map((p) => `<div class="ligne-barre"><span>${esc(p.nom)}</span>${barre((m.mesure(p) / max) * 100)}<b>${esc(tri === "sessions" ? m.valeur(p) : montantReel(p.reel, c))}</b></div>`).join("")
+    : `<p class="aide">${messageVide(periode)}</p>`;
   $("t-projets").innerHTML = r.projets.length
     ? r.projets.map((p) => `<tr>
         <td data-label="Projet">${esc(p.nom)}</td>
-        <td data-label="Valeur catalogue">${esc(formaterMontant(p.cout, c.devise))}</td>
+        <td data-label="Dépense réelle estimée">${esc(montantReel(p.reel, c))}</td>
         <td data-label="Part">${esc(p.part.toFixed(1))} %</td>
-        <td data-label="Tokens">${esc(formaterNombre(p.tokens))}</td>
+        <td data-label="Tokens (hors relectures)">${esc(formaterNombre(p.tokens))}</td>
         <td data-label="Sessions">${p.sessions}</td>
         <td data-label="Dernière activité">${esc(p.derniere)}</td></tr>`).join("")
-    : vide(6, "Aucun usage API sur cette période.");
+    : `<tr><td colspan="6" class="vide">${messageVide(periode)}</td></tr>`;
   $("dl-projets").innerHTML = [...new Set(etat.usages.map((u) => u.projet))].sort().map((v) => `<option value="${esc(v)}">`).join("");
 }
 
@@ -291,29 +305,30 @@ const NB_CONVERSATIONS = 300;
 
 function rendreConversations() {
   const c = etat.config;
+  const periode = $("c-periode").value;
   const select = $("c-projet");
   const projets = [...new Set(etat.usages.filter((u) => u.nature === "api").map((u) => u.projet))].sort((a, b) => a.localeCompare(b, "fr"));
   const choisi = projets.includes(select.value) ? select.value : "";
   select.innerHTML = `<option value="">Tous les projets</option>` + projets.map((p) => `<option value="${esc(p)}">${esc(p)}</option>`).join("");
   select.value = choisi;
   const nombre = (id) => { const n = Number($(id).value); return Number.isFinite(n) && n > 0 ? n : 0; };
-  const liste = listerConversations(usagesApi($("c-periode").value), {
-    projet: choisi, tokensMin: nombre("c-tokens"), coutMin: nombre("c-cout"), tri: $("c-tri").value,
+  const taux = tauxAffiche();
+  const liste = listerConversations(usagesApi(periode), {
+    projet: choisi, tokensMin: nombre("c-tokens"), reelMin: taux > 0 ? nombre("c-cout") : 0, taux, tri: $("c-tri").value,
   });
-  const total = liste.reduce((s, x) => s + x.cout, 0);
+  const total = liste.reduce((s, x) => s + x.reel, 0);
   const jetons = liste.reduce((s, x) => s + x.tokens, 0);
-  $("conv-compte").textContent = `${liste.length} conversation(s) · ${formaterMontant(total, c.devise)} · ${formaterNombre(jetons)} tokens`
+  $("conv-compte").textContent = `${liste.length} conversation(s) · ${estDirection() ? formaterMontant(total, c.devise) + " · " : ""}${formaterNombre(jetons)} tokens`
     + (liste.length > NB_CONVERSATIONS ? ` · les ${NB_CONVERSATIONS} premières sont affichées` : "");
   $("t-conversations").innerHTML = liste.length
     ? liste.slice(0, NB_CONVERSATIONS).map((x) => `<tr>
         <td data-label="Conversation">${esc(x.conversation)}</td>
         <td data-label="Projet">${esc(x.projet)}</td>
-        <td data-label="Tokens">${esc(formaterNombre(x.tokens))}</td>
-        <td data-label="Valeur catalogue">${esc(formaterMontant(x.cout, c.devise))}</td>
+        <td data-label="Tokens (hors relectures)">${esc(formaterNombre(x.tokens))}</td>
+        <td data-label="Dépense réelle estimée">${esc(montantReel(x.reel, c))}</td>
         <td data-label="Dernière activité">${esc(x.date)}${x.cumul ? " · total cumulé" : ""}</td></tr>`).join("")
-    : vide(5, "Aucune conversation ne correspond à ces filtres.");
+    : `<tr><td colspan="5" class="vide">${periode === "tout" ? "Aucune conversation ne correspond à ces filtres." : messageVide(periode)}</td></tr>`;
 }
-
 
 function rendreDepenses() {
   const c = etat.config;
@@ -492,6 +507,14 @@ for (const id of ["c-projet", "c-periode", "c-tri", "c-tokens", "c-cout"]) {
   $(id).addEventListener(id === "c-tokens" || id === "c-cout" ? "input" : "change", () => { rendreConversations(); appliquerLargeurs(); });
 }
 for (const id of ["p-periode", "p-tri"]) $(id).addEventListener("change", appliquerLargeurs);
+document.addEventListener("click", (e) => {
+  if (!(e.target instanceof Element) || !e.target.closest("[data-voir-tout]")) return;
+  $("p-periode").value = "tout";
+  $("c-periode").value = "tout";
+  rendreProjets();
+  rendreConversations();
+  appliquerLargeurs();
+});
 addEventListener("hashchange", vue);
 
 // ---------- démarrage ----------

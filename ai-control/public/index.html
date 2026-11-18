@@ -44,7 +44,7 @@
 <section id="vue-apercu">
   <div class="kpi" id="kpi"></div>
   <div class="carte" data-dir>
-    <div class="tete"><h2>Tokens consommés et dépensé</h2><p>Mois sélectionné</p></div>
+    <div class="tete"><h2>Coût réel du token</h2><p>Dépenses réelles ÷ tokens</p></div>
     <div id="bilan"></div>
   </div>
   <div class="carte" data-collab>
@@ -67,7 +67,7 @@
     </div>
   </div>
   <div class="carte" data-dir>
-    <div class="tete"><h2>Tokens API par projet</h2><p>Mois sélectionné</p></div>
+    <div class="tete"><h2>Où part la dépense réelle</h2><p>Estimation : tokens du projet × coût réel du token</p></div>
     <div id="graph-projets-apercu"></div>
   </div>
   <div class="carte" data-dir>
@@ -83,7 +83,7 @@
       <li>Rattachez chaque usage à son projet : cela permet de répartir les coûts justement.</li>
     </ul>
   </div>
-  <p class="note">Les abonnements et crédits sont des dépenses. Les coûts d'usage API sont une valeur calculée au tarif catalogue des tokens : ce ne sont pas des dépenses, ils sont présentés à part et ne sont jamais additionnés aux dépenses.</p>
+  <p class="note">Les abonnements et crédits sont des dépenses. Les usages API sont des tokens, pas des dépenses : la dépense réelle d'un projet n'est qu'une estimation (tokens × coût réel du token) qui répartit vos dépenses, sans jamais s'y ajouter.</p>
 </section>
 
 <!-- Utilisateurs -->
@@ -91,7 +91,7 @@
   <div class="tete"><h2 id="titre-utilisateurs">Utilisateurs</h2><p>Tokens API et quotas d'abonnement du mois.</p></div>
   <div class="tableau">
     <table>
-      <thead><tr><th>Utilisateur</th><th>Tokens API</th><th>Quota abonnement</th><th>Coût API (catalogue ou déclaré)</th><th>Lignes</th><th>Sources</th></tr></thead>
+      <thead><tr><th>Utilisateur</th><th>Tokens API</th><th>Quota abonnement</th><th>Dépense réelle estimée</th><th>Lignes</th><th>Sources</th></tr></thead>
       <tbody id="t-users"></tbody>
     </table>
   </div>
@@ -132,7 +132,7 @@
   <h3 class="sous">Usages saisis ce mois</h3>
   <div class="tableau">
     <table>
-      <thead><tr><th>Date</th><th>Utilisateur</th><th>Projet</th><th>Nature</th><th>Valeur</th><th>Coût</th><th>Source</th><th></th></tr></thead>
+      <thead><tr><th>Date</th><th>Utilisateur</th><th>Projet</th><th>Nature</th><th>Valeur</th><th>Dépense réelle estimée</th><th>Source</th><th></th></tr></thead>
       <tbody id="t-usages"></tbody>
     </table>
   </div>
@@ -140,27 +140,27 @@
 
 <!-- Projets -->
 <section id="vue-projets" hidden>
-  <div class="tete"><h2>Projets</h2><p>Quel projet consomme combien : valeur au tarif catalogue, tokens et nombre de sessions.</p></div>
+  <div class="tete"><h2>Projets</h2><p>Quel projet consomme combien : dépense réelle estimée, tokens et nombre de sessions.</p></div>
   <div class="form filtres">
     <label>Période
       <select id="p-periode"><option value="mois">Mois sélectionné</option><option value="semaine">7 derniers jours</option><option value="tout">Toutes périodes</option></select>
     </label>
     <label>Classer par
-      <select id="p-tri"><option value="cout">Valeur catalogue</option><option value="tokens">Tokens</option><option value="sessions">Nombre de sessions</option></select>
+      <select id="p-tri"><option value="reel">Dépense réelle estimée</option><option value="sessions">Nombre de sessions</option></select>
     </label>
   </div>
   <div class="kpi" id="kpi-projets"></div>
   <div class="carte">
-    <div class="tete"><h2 id="titre-graph-projets">Valeur au tarif catalogue par projet</h2></div>
+    <div class="tete"><h2 id="titre-graph-projets">Dépense réelle estimée par projet</h2></div>
     <div id="graph-projets"></div>
   </div>
   <div class="tableau">
     <table>
-      <thead><tr><th>Projet</th><th>Valeur catalogue</th><th>Part</th><th>Tokens</th><th>Sessions</th><th>Dernière activité</th></tr></thead>
+      <thead><tr><th>Projet</th><th>Dépense réelle estimée</th><th>Part</th><th>Tokens (hors relectures)</th><th>Sessions</th><th>Dernière activité</th></tr></thead>
       <tbody id="t-projets"></tbody>
     </table>
   </div>
-  <p class="note">Valeurs calculées par la plateforme au tarif catalogue des tokens (source « Estimé ») : ce ne sont pas des factures, et elles ne sont pas additionnées aux dépenses du compte. Vos dépenses réelles sont dans l'onglet Dépenses. Jusqu'au 18 novembre 2026, seul le total de chaque session est connu : il est daté de sa dernière activité et n'est pas réparti sur les périodes (ces lignes sont repérées « total cumulé »). Depuis, chaque relevé ajoute la consommation survenue depuis le précédent, ce qui permet de suivre un projet semaine par semaine. Les tokens comptent l'entrée, la sortie et le cache.</p>
+  <p class="note">La dépense réelle d'un projet est estimée ainsi : coût réel moyen du token (vos dépenses réelles ÷ l'ensemble des tokens, hors relectures de cache) × les tokens du projet. Tous les tokens sont comptés au même prix, quel que soit le modèle : c'est une approximation. Le suivi par période a démarré le 18 novembre 2026. Avant, seul le total de chaque session est connu : cet historique n'est pas réparti sur les mois et n'apparaît que dans « Toutes périodes ». Les relectures de cache (très nombreuses, très peu coûteuses) ne sont pas comptées.</p>
 </section>
 
 <!-- Conversations -->
@@ -173,19 +173,19 @@
     <label>Période
       <select id="c-periode"><option value="mois">Mois sélectionné</option><option value="semaine">7 derniers jours</option><option value="tout">Toutes périodes</option></select>
     </label>
-    <label>Tokens minimum
+    <label>Tokens minimum (hors relectures)
       <input type="number" id="c-tokens" min="0" step="1" value="0" inputmode="numeric">
     </label>
-    <label>Valeur catalogue minimum (USD)
+    <label>Dépense réelle estimée minimum (USD)
       <input type="number" id="c-cout" min="0" step="1" value="0" inputmode="decimal">
     </label>
     <label>Classer par
-      <select id="c-tri"><option value="cout">Valeur catalogue</option><option value="tokens">Tokens</option><option value="date">Dernière activité</option></select>
+      <select id="c-tri"><option value="reel">Dépense réelle estimée</option><option value="date">Dernière activité</option></select>
     </label>
   </div>
   <div class="tableau">
     <table>
-      <thead><tr><th>Conversation</th><th>Projet</th><th>Tokens</th><th>Valeur catalogue</th><th>Dernière activité</th></tr></thead>
+      <thead><tr><th>Conversation</th><th>Projet</th><th>Tokens (hors relectures)</th><th>Dépense réelle estimée</th><th>Dernière activité</th></tr></thead>
       <tbody id="t-conversations"></tbody>
     </table>
   </div>
