@@ -8,9 +8,9 @@ Cette procédure est destinée à un agent chargé de mettre AI CONTROL en ligne
 |---|---|
 | *(secret réseau, invisible)* | jeton Cloudflare, rangé par le propriétaire dans les « Secrets réseau » de l'environnement cloud pour l'hôte `api.cloudflare.com`. Le proxy l'ajoute à chaque requête vers cet hôte : l'agent ne le voit jamais et **n'écrit aucun en-tête `Authorization` lui-même**. |
 | `CLOUDFLARE_ACCOUNT_ID` | identifiant du compte Cloudflare (variable d'environnement, non secrète) |
-| `DIRECTION` | adresses Direction / Finance, séparées par des virgules |
-| `COLLABORATEURS` | adresses collaborateurs, séparées par des virgules |
-| `ACCESS_TEAM_DOMAIN`, `ACCESS_AUD` | valeurs de l'équipe Access |
+| `CLE_LIEN` | **créée par l'agent pendant le déploiement** (voir section 3), jamais écrite dans le dépôt |
+
+Mode d'accès retenu par le propriétaire le 18 novembre 2026 : **lien secret**, sans compte ni code de connexion. Toute personne qui a le lien entre avec les droits Direction. Les variables `DIRECTION`, `COLLABORATEURS`, `ACCESS_TEAM_DOMAIN`, `ACCESS_AUD` ne sont pas réglées (elles serviront si le propriétaire passe un jour à une adresse par personne).
 
 GitHub : aucun jeton à fournir. L'accès au dépôt passe par la liaison GitHub de Claude Code.
 
@@ -42,27 +42,29 @@ Si l'accès est refusé ou expiré : arrêter et signaler. Expiration du jeton C
 1. Créer le projet `ai-control` (tableau de bord, ou `npx wrangler pages project create ai-control`).
 2. Réglages de build : **Root directory** `ai-control`, build vide, sortie `public`. Branche : `agent/M-013-ai-control-partage` (ou la branche validée par le propriétaire).
 3. Lier la base : binding D1 nom `DB` → `ai-control`. Ne pas modifier `wrangler.toml` pour cela.
-4. Renseigner les variables `DIRECTION`, `COLLABORATEURS`, `ACCESS_TEAM_DOMAIN`, `ACCESS_AUD` (environnement production).
-5. Déployer la branche. Ne pas fusionner dans `main`.
+4. Déployer la branche (envoi direct du dossier `public` avec les Functions, ou build depuis GitHub). Ne pas fusionner dans `main`.
 
-## 3. Cloudflare Access
+## 3. Lien secret
 
-Créer une application *self-hosted* sur l'adresse du projet, avec une règle *Include → Emails* listant **exactement** les adresses de `DIRECTION` et `COLLABORATEURS`. Contrôle : une adresse hors liste doit être refusée par Access.
+1. Créer la clé : `openssl rand -hex 24` (48 caractères). Ne l'écrire dans aucun fichier.
+2. L'enregistrer comme **secret** du projet Pages, nom `CLE_LIEN`, environnement production, puis redéployer.
+3. Remettre au propriétaire, dans le compte rendu uniquement, le lien : `https://<adresse du projet>/?cle=<clé>`.
+4. Ne créer aucune application Cloudflare Access.
 
 ## 4. Vérifications (à faire avant de rendre compte)
 
-- Direction : onglets Dépenses et Alertes visibles ; création d'une dépense visible après rechargement.
-- Collaborateur : onglets Dépenses et Alertes absents ; aucune ligne d'un autre collaborateur à l'écran.
-- Collaborateur : `POST /api/depenses` renvoie 403.
-- Adresse hors liste : « Accès refusé ».
+- Adresse du projet **sans** la clé : « Accès refusé » (403), pour la page comme pour `/api/donnees`.
+- Lien complet : la page s'ouvre, la clé disparaît de la barre d'adresse, les onglets Dépenses et Alertes sont visibles.
+- Création d'une dépense de test, visible après rechargement, puis supprimée.
+- Mauvaise clé : 403.
 - Devise par défaut : USD.
 
 ## Points d'arrêt (ne pas contourner)
 
 - Accès Cloudflare refusé ou expiré : arrêter et signaler.
-- Une liste d'adresses incertaine ou différente entre les variables et Access : arrêter, c'est une décision du propriétaire.
+- Le lien fonctionne sans clé, ou la clé apparaît dans un fichier, un commit ou un journal : arrêter, changer la clé, signaler.
 - Toute opération hors de cette procédure (fusion, changement de droits, création d'autres ressources) : demander l'accord du propriétaire.
 
 ## Retour attendu
 
-Adresse publique du projet, identifiant de la base, résultat de chaque vérification de la section 4, et tout écart constaté.
+Lien complet à partager, identifiant de la base, résultat de chaque vérification de la section 4, et tout écart constaté.

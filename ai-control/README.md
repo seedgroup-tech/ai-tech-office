@@ -3,7 +3,16 @@
 Console autonome de suivi des dépenses et de l'usage de l'IA chez SeedScaleUp. Application
 indépendante d'AI TECH OFFICE : son propre projet Cloudflare Pages, sa propre adresse, ses propres données.
 
-## Qui voit quoi
+## Mode d'accès en service : lien secret (18 novembre 2026)
+
+Décision du propriétaire : pas de compte ni de code de connexion, un seul lien pour toute l'équipe.
+Si le secret `CLE_LIEN` est réglé (32 caractères au moins), toute personne qui ouvre
+`https://<adresse>/?cle=<CLE_LIEN>` entre avec les droits Direction ; sans la clé, tout est refusé (403).
+Limites à connaître : le lien vaut mot de passe partagé, on ne sait pas qui a saisi quoi (le champ
+« utilisateur » reçoit les initiales, par convention), et pour couper l'accès il faut changer la clé.
+Le mode à deux profils ci-dessous reste disponible : il s'active en retirant `CLE_LIEN`.
+
+## Qui voit quoi (mode à deux profils, par adresse)
 
 | Profil | Voit | Ne voit pas |
 |---|---|---|
