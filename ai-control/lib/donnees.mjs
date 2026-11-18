@@ -5,7 +5,7 @@
 //     et ne supprime que ses propres usages ; ne lit ni les limites ni les auteurs.
 // Les identifiants et les auteurs sont posés par le serveur, jamais repris du client.
 
-import { etatInitial, normaliser, valideDepense, valideUsage } from "../public/logique.mjs";
+import { etatInitial, normaliser, valideDepense, valideUsage, dateValide } from "../public/logique.mjs";
 import { ROLES } from "./roles.mjs";
 
 export const MAX_LOT = 500;
@@ -47,6 +47,38 @@ export function preparerUsage(l, emailAppelant, role) {
   return { date: candidat.date, utilisateur, projet, nature: candidat.nature, valeur: candidat.valeur, cout: candidat.cout, source: candidat.source, conversation, session };
 }
 
+const CHAMPS_POURCENT = ["session_pct", "semaine_pct", "claude_code", "conversations", "cowork", "autre"];
+const CHAMPS_MONTANT = ["depense", "plafond"];
+
+// Relevé de la page « Utilisation » : chaque valeur est facultative, mais il en faut au moins une.
+export function preparerForfait(c) {
+  if (!c || !dateValide(c.date)) return null;
+  const out = { date: c.date };
+  let nb = 0;
+  for (const k of [...CHAMPS_POURCENT, ...CHAMPS_MONTANT]) {
+    const v = c[k];
+    if (v === null || v === undefined || v === "") { out[k] = null; continue; }
+    if (typeof v !== "number" || !Number.isFinite(v) || v < 0) return null;
+    if (CHAMPS_POURCENT.includes(k) && v > 100) return null;
+    out[k] = v;
+    nb += 1;
+  }
+  return nb ? out : null;
+}
+
+export async function ecrireForfait(db, corps, email) {
+  const f = preparerForfait(corps);
+  if (!f) return erreur(400, "Relevé invalide : date et au moins une valeur (pourcentages entre 0 et 100, montants positifs).");
+  await db.prepare(
+    `INSERT INTO forfait (date, session_pct, semaine_pct, claude_code, conversations, cowork, autre, depense, plafond, cree_par, cree_le)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+     ON CONFLICT(date) DO UPDATE SET session_pct = excluded.session_pct, semaine_pct = excluded.semaine_pct, claude_code = excluded.claude_code,
+       conversations = excluded.conversations, cowork = excluded.cowork, autre = excluded.autre, depense = excluded.depense,
+       plafond = excluded.plafond, cree_par = excluded.cree_par, cree_le = excluded.cree_le`,
+  ).bind(f.date, f.session_pct, f.semaine_pct, f.claude_code, f.conversations, f.cowork, f.autre, f.depense, f.plafond, email, new Date().toISOString()).run();
+  return reponse({ enregistre: f.date }, 201);
+}
+
 export function preparerConfig(c) {
   const optNombre = (v) => (v === null || v === undefined ? null : nombre(v));
   const budget = optNombre(c?.budgetMensuel) ?? 0;
@@ -86,7 +118,8 @@ export async function chargerDonnees(db, email, role) {
   const depenses = await db.prepare(`SELECT ${COLONNES_DEPENSE} FROM depenses ORDER BY date`).all();
   if (role === ROLES.direction) {
     const usages = await db.prepare(`SELECT ${COLONNES_USAGE} FROM usages ORDER BY date`).all();
-    return { role, email, config, depenses: depenses.results, usages: usages.results };
+    const forfait = await db.prepare("SELECT date, session_pct, semaine_pct, claude_code, conversations, cowork, autre, depense, plafond FROM forfait ORDER BY date DESC LIMIT 60").all();
+    return { role, email, config, depenses: depenses.results, usages: usages.results, forfait: forfait.results };
   }
   const usages = await db.prepare(`SELECT ${COLONNES_USAGE} FROM usages WHERE utilisateur = ? ORDER BY date`).bind(email).all();
   return { role, email, config: configCollaborateur(config), depenses: depenses.results, usages: usages.results };
@@ -152,6 +185,10 @@ export async function traiter({ method, chemin, corps, email, role, db }) {
   if (method === "PUT" && chemin === "/config") {
     if (!direction) return erreur(403, "Accès réservé à la Direction / Finance.");
     return ecrireConfig(db, corps);
+  }
+  if (method === "POST" && chemin === "/forfait") {
+    if (!direction) return erreur(403, "Accès réservé à la Direction / Finance.");
+    return ecrireForfait(db, corps, email);
   }
   if (method === "POST" && chemin === "/depenses") {
     if (!direction) return erreur(403, "Accès réservé à la Direction / Finance.");

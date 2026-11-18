@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { traiter, preparerDepense, preparerUsage, preparerConfig } from "../lib/donnees.mjs";
+import { traiter, preparerDepense, preparerUsage, preparerConfig, preparerForfait } from "../lib/donnees.mjs";
 import { roleDe } from "../lib/roles.mjs";
 import { fausseBase } from "./outils.mjs";
 
@@ -123,4 +123,31 @@ test("config : la limite hebdomadaire par projet est acceptée, facultative et j
   assert.equal(preparerConfig({ ...base, limiteProjetTokensSemaine: 1000000000 }).limiteProjetTokensSemaine, 1000000000);
   assert.equal(preparerConfig(base).limiteProjetTokensSemaine, null);
   assert.equal(preparerConfig({ ...base, limiteProjetTokensSemaine: -1 }), null);
+});
+
+test("forfait : relevé validé (date, pourcentages 0 à 100, montants positifs, au moins une valeur)", () => {
+  assert.equal(preparerForfait({ date: "2026-11-18", cowork: 90 }).cowork, 90);
+  assert.equal(preparerForfait({ date: "2026-11-18", cowork: 90 }).autre, null);
+  assert.equal(preparerForfait({ date: "2026-11-18" }), null);
+  assert.equal(preparerForfait({ date: "2026-11-18", cowork: 101 }), null);
+  assert.equal(preparerForfait({ date: "2026-11-18", depense: -1 }), null);
+  assert.equal(preparerForfait({ date: "18/11/2026", cowork: 5 }), null);
+  assert.equal(preparerForfait({ date: "2026-11-18", cowork: "90" }), null);
+});
+
+test("forfait : la Direction enregistre et relit un relevé (mis à jour le même jour) ; un collaborateur est refusé", async () => {
+  const db = fausseBase();
+  const r1 = await dir(db, "POST", "/forfait", { date: "2026-11-18", semaine_pct: 12, cowork: 90, depense: 100.49, plafond: 100 });
+  assert.equal(r1.statut, 201);
+  const r2 = await dir(db, "POST", "/forfait", { date: "2026-11-18", semaine_pct: 15, cowork: 80 });
+  assert.equal(r2.statut, 201);
+  const d = await dir(db, "GET", "/donnees");
+  assert.equal(d.corps.forfait.length, 1);
+  assert.equal(d.corps.forfait[0].semaine_pct, 15);
+  assert.equal(d.corps.forfait[0].depense, null);
+  assert.equal((await dir(db, "POST", "/forfait", { date: "2026-11-18" })).statut, 400);
+  const c = await appel(db, "collaborateur", ANA, "POST", "/forfait", { date: "2026-11-18", cowork: 1 });
+  assert.equal(c.statut, 403);
+  const dc = await appel(db, "collaborateur", ANA, "GET", "/donnees");
+  assert.equal(dc.corps.forfait, undefined);
 });

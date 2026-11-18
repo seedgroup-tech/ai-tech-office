@@ -51,6 +51,28 @@
     <div class="tete"><h2>Ma consommation</h2><p id="mon-total"></p></div>
     <div id="mon-suivi"></div>
   </div>
+  <div class="carte" data-dir>
+    <div class="tete"><h2>Utilisation du forfait</h2><p id="forfait-date"></p></div>
+    <div id="forfait-dernier"></div>
+    <details id="forfait-saisie">
+      <summary>Saisir un relevé</summary>
+      <p class="aide">Sur claude.ai, ouvrez Paramètres, Utilisation. Sélectionnez toute la page (Ctrl+A), copiez (Ctrl+C), puis collez ici. Vous pouvez aussi remplir les champs à la main.</p>
+      <textarea id="forfait-texte" rows="4" aria-label="Texte copié de la page Utilisation"></textarea>
+      <div class="actions"><button type="button" class="go" id="b-forfait-lire">Lire le texte collé</button></div>
+      <form id="f-forfait" class="form">
+        <label>Date du relevé <input type="date" name="date" required></label>
+        <label>Session actuelle (%) <input type="number" name="session_pct" min="0" max="100" step="any"></label>
+        <label>Cette semaine (%) <input type="number" name="semaine_pct" min="0" max="100" step="any"></label>
+        <label>Claude Code (% de la semaine) <input type="number" name="claude_code" min="0" max="100" step="any"></label>
+        <label>Conversations (%) <input type="number" name="conversations" min="0" max="100" step="any"></label>
+        <label>Cowork (%) <input type="number" name="cowork" min="0" max="100" step="any"></label>
+        <label>Autre (%) <input type="number" name="autre" min="0" max="100" step="any"></label>
+        <label>Dépensé ce mois (USD) <input type="number" name="depense" min="0" step="any"></label>
+        <label>Plafond mensuel (USD) <input type="number" name="plafond" min="0" step="any"></label>
+        <button type="submit" class="go">Enregistrer le relevé</button>
+      </form>
+    </details>
+  </div>
   <div class="carte">
     <div class="tete"><h2>Budget du mois</h2><p id="prov"></p></div>
     <div id="budget"></div>

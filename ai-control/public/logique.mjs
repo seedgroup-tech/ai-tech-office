@@ -39,6 +39,7 @@ export function etatInitial() {
     },
     depenses: [],
     usages: [],
+    forfait: [],
   };
 }
 
@@ -282,12 +283,49 @@ export function alertes(etat, mois, aujourdhui = new Date().toISOString().slice(
     const reel = taux > 0 ? ` (environ ${formaterMontant(top.reel, c.devise)} de dépense réelle estimée)` : "";
     out.push({ niveau: "attention", categorie: "Projet", message: `Le projet ${top.nom} concentre ${Math.round(top.part)} % de la consommation cumulée${reel}.${conv}` });
   }
+  const fo = dernierForfait(etat);
+  if (fo && fo.plafond > 0 && fo.depense !== null) {
+    const part = (fo.depense / fo.plafond) * 100;
+    if (part >= 100) out.push({ niveau: "critique", categorie: "Forfait", message: `Plafond de dépenses mensuel du forfait atteint : ${formaterMontant(fo.depense, c.devise)} sur ${formaterMontant(fo.plafond, c.devise)} (relevé du ${fo.date}). Les tâches planifiées peuvent échouer tant qu'il n'est pas relevé ou que le mois ne change pas.` });
+    else if (part >= 80) out.push({ niveau: "attention", categorie: "Forfait", message: `${Math.round(part)} % du plafond de dépenses mensuel du forfait (${formaterMontant(fo.depense, c.devise)} sur ${formaterMontant(fo.plafond, c.devise)}, relevé du ${fo.date}).` });
+  }
+  if (fo && fo.semaine_pct !== null && fo.semaine_pct >= 80) {
+    out.push({ niveau: fo.semaine_pct >= 95 ? "critique" : "attention", categorie: "Forfait", message: `${Math.round(fo.semaine_pct)} % de la limite hebdomadaire du forfait utilisés (relevé du ${fo.date}).` });
+  }
   if (r.budget <= 0) {
     out.push({ niveau: "info", categorie: "Configuration", message: "Aucun budget mensuel défini : les alertes de dépassement sont inactives. Renseignez-le dans Alertes." });
   }
   const rang = { critique: 0, attention: 1, info: 2 };
   return out.sort((a, b) => rang[a.niveau] - rang[b.niveau]);
 }
+
+// Lit le texte copié de la page « Utilisation » (claude.ai, Paramètres) : pourcentages de la session et
+// de la semaine, parts par produit, dépenses sur plafond mensuel. Une valeur absente reste à null.
+export function lireForfait(texte) {
+  const t = String(texte || "");
+  const nombre = (x) => { const n = Number(String(x).replace(/[\s\u00a0\u202f]/g, "").replace(",", ".")); return Number.isFinite(n) ? n : null; };
+  const pct = (re) => { const m = re.exec(t); const n = m ? nombre(m[1]) : null; return n !== null && n >= 0 && n <= 100 ? n : null; };
+  const dernier = (nom) => {
+    const tous = [...t.matchAll(new RegExp(`${nom}\\s*([\\d.,]+)\\s*%`, "gi"))];
+    const n = tous.length ? nombre(tous[tous.length - 1][1]) : null;
+    return n !== null && n >= 0 && n <= 100 ? n : null;
+  };
+  const argent = /([\d][\d\s\u00a0\u202f.,]*?)\s*\$\s*US\s+sur\s+([\d][\d\s\u00a0\u202f.,]*?)\s*\$\s*US/i.exec(t);
+  const valeurs = {
+    session_pct: pct(/Session actuelle[\s\S]{0,200}?([\d.,]+)\s*%\s*utilis/),
+    semaine_pct: pct(/Cette semaine[\s\S]{0,200}?([\d.,]+)\s*%\s*utilis/),
+    claude_code: dernier("Claude Code"),
+    conversations: dernier("Conversations"),
+    cowork: dernier("Cowork"),
+    autre: dernier("Autre"),
+    depense: argent ? nombre(argent[1]) : null,
+    plafond: argent ? nombre(argent[2]) : null,
+  };
+  return { valeurs, trouves: Object.values(valeurs).filter((v) => v !== null).length };
+}
+
+// Dernier relevé du forfait (le plus récent d'abord).
+export const dernierForfait = (etat) => [...(etat.forfait || [])].sort((a, b) => b.date.localeCompare(a.date))[0] || null;
 
 // Grand nombre lisible : 58 777 512 396 devient « 58,8 milliards ».
 export function formaterCompact(n) {

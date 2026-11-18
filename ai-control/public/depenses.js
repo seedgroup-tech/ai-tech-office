@@ -1,7 +1,7 @@
 // AI CONTROL (M-013) : page partagée. Les données viennent de l'API (/api), jamais du navigateur.
 // Les droits sont appliqués par le serveur ; ce script ne fait que masquer ce qui ne sert pas au rôle.
 import {
-  etatInitial, moisCourant, resumeMois, alertes, agreger, creditsParProjet, listerConversations, bilanReel, tauxReel, conseilsParProjet, formaterCompact, usagesSemaine, usagesPlage, depensesDuMois, usagesDuMois,
+  etatInitial, moisCourant, resumeMois, alertes, agreger, creditsParProjet, listerConversations, bilanReel, tauxReel, lireForfait, dernierForfait, conseilsParProjet, formaterCompact, usagesSemaine, usagesPlage, depensesDuMois, usagesDuMois,
   depensesParMois, importerDepenses, importerUsages, formaterMontant, formaterNombre,
   dateValide, parJour, projeterMois, SOURCES, TYPES, NATURES,
 } from "./logique.mjs";
@@ -79,7 +79,7 @@ async function charger() {
   }
   role = r.donnees.role;
   email = r.donnees.email;
-  etat = { config: r.donnees.config, depenses: r.donnees.depenses, usages: r.donnees.usages };
+  etat = { config: r.donnees.config, depenses: r.donnees.depenses, usages: r.donnees.usages, forfait: r.donnees.forfait || [] };
   appliquerRole();
   rendre();
   return true;
@@ -156,6 +156,7 @@ function rendreApercu() {
       ? projets.map((p) => `<div class="ligne-barre"><span>${esc(p.nom)}</span>${barre((p.tokens / max) * 100)}<b>${esc(formaterMontant(p.reel, c.devise))} · ${esc(p.part.toFixed(1).replace(".", ","))} %</b></div>`).join("")
       : `<p class="aide">Aucun usage API enregistré.</p>`;
     rendreBilan(c);
+    rendreForfait(c);
     rendreBonnesPratiques(c);
   } else {
     rendreMonSuivi();
@@ -173,6 +174,18 @@ function rendreBilan(c) {
     kpi("Ce mois-ci", formaterMontant(b.depenseMois, c.devise), b.tokensMois > 0 ? `${formaterCompact(b.tokensMois)} de tokens mesurés, soit environ ${formaterMontant(b.reelMois, c.devise)}` : "consommation mesurée à partir du 18 nov. 2026"),
   ].join("")}</div>
     <p class="aide">Méthode : coût réel moyen du token = dépenses réelles ÷ tokens hors relectures de cache. La dépense d'un projet est ses tokens × ce coût. C'est une approximation : tous les tokens sont comptés au même prix, quel que soit le modèle.</p>`;
+}
+
+function rendreForfait(c) {
+  const f = dernierForfait(etat);
+  $("forfait-date").textContent = f ? `Relevé du ${f.date}` : "Aucun relevé";
+  if (!f) { $("forfait-dernier").innerHTML = `<p class="aide">Aucun relevé. Ouvrez « Saisir un relevé » ci-dessous.</p>`; return; }
+  const ligne = (nom, v, niveau = "") => (v === null || v === undefined ? "" : `<div class="ligne-barre"><span>${esc(nom)}</span>${barre(v, niveau)}<b>${esc(String(Math.round(v * 10) / 10).replace(".", ","))} %</b></div>`);
+  const part = f.plafond > 0 && f.depense !== null ? (f.depense / f.plafond) * 100 : null;
+  $("forfait-dernier").innerHTML = ligne("Session actuelle", f.session_pct)
+    + ligne("Cette semaine", f.semaine_pct, f.semaine_pct >= 95 ? "critique" : f.semaine_pct >= 80 ? "attention" : "")
+    + ligne("Claude Code", f.claude_code) + ligne("Conversations", f.conversations) + ligne("Cowork", f.cowork) + ligne("Autre", f.autre)
+    + (part === null ? "" : `<div class="budget-ligne"><span>Plafond de dépenses mensuel du forfait</span><span>${esc(formaterMontant(f.depense, c.devise))} sur ${esc(formaterMontant(f.plafond, c.devise))}</span></div>${barre(Math.min(100, part), part >= 100 ? "critique" : part >= 80 ? "attention" : "")}`);
 }
 
 const CONSEILS_GENERAUX = [
@@ -520,6 +533,23 @@ for (const id of ["c-projet", "c-periode", "c-tri", "c-du", "c-au", "c-tokens", 
 }
 for (const id of ["p-du", "p-au"]) $(id).addEventListener("change", () => { rendreProjets(); appliquerLargeurs(); });
 for (const id of ["p-periode", "p-tri"]) $(id).addEventListener("change", appliquerLargeurs);
+$("b-forfait-lire").addEventListener("click", () => {
+  const r = lireForfait($("forfait-texte").value);
+  const f = $("f-forfait");
+  for (const [k, v] of Object.entries(r.valeurs)) f.elements.namedItem(k).value = v ?? "";
+  if (!f.elements.namedItem("date").value) f.elements.namedItem("date").value = aujourdhui();
+  message(r.trouves ? `${r.trouves} valeur(s) reconnue(s) sur 8 : vérifiez les champs puis enregistrez.` : "Aucune valeur reconnue : collez le texte de la page Utilisation, ou remplissez les champs.", r.trouves > 0);
+});
+$("f-forfait").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const f = e.currentTarget;
+  const corps = { date: f.elements.namedItem("date").value };
+  for (const k of ["session_pct", "semaine_pct", "claude_code", "conversations", "cowork", "autre", "depense", "plafond"]) {
+    const t = f.elements.namedItem(k).value.trim();
+    corps[k] = t === "" ? null : Number(t);
+  }
+  if (await ecrire("POST", "/forfait", corps, "Relevé du forfait enregistré.")) { f.reset(); $("forfait-texte").value = ""; }
+});
 document.addEventListener("click", (e) => {
   if (!(e.target instanceof Element) || !e.target.closest("[data-voir-cumul]")) return;
   $("p-periode").value = "cumul";

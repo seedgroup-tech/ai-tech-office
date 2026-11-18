@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   etatInitial, normaliser, lireEtat, lireCsv, parseNombre, parseDate,
-  importerDepenses, importerUsages, resumeMois, alertes, agreger, creditsParProjet, listerConversations, bilanReel, tauxReel, conseilsParProjet, formaterCompact, formaterNombre, usagesSemaine, usagesPlage, moinsJours, sessionsAgregees, moisPrecedents, parJour, projeterMois,
+  importerDepenses, importerUsages, resumeMois, alertes, agreger, creditsParProjet, listerConversations, bilanReel, tauxReel, conseilsParProjet, formaterCompact, formaterNombre, usagesSemaine, usagesPlage, moinsJours, sessionsAgregees, lireForfait, dernierForfait, moisPrecedents, parJour, projeterMois,
 } from "../public/logique.mjs";
 
 function etatAvec({ budget = 0, depenses = [], usages = [], config = {} } = {}) {
@@ -318,4 +318,60 @@ test("projets actifs du mois : dernière activité dans le mois, historique comp
   const e = etatAvec({ usages: [{ ...use("2026-11-18", "e", 100, { projet: "A" }), cumul: 1 }, use("2026-11-03", "e", 7, { projet: "B" }), use("2026-10-30", "e", 7, { projet: "C" })] });
   assert.equal(resumeMois(e, "2026-11").projetsActifs, 2);
   assert.equal(resumeMois(e, "2026-11").tokens, 7);
+});
+
+const PAGE_UTILISATION = `Paramètres
+Votre utilisation Ultra
+En bonne voie. Vous devriez atteindre la réinitialisation de vendredi avec de la marge.
+Session actuelle
+Réinitialisation à 15:00
+17 % utilisés
+Cette semaine
+Réinitialisation le vendredi 08:00
+12 % utilisés
+Crédits d'utilisation
+0 $US
+Limite de dépenses mensuelle
+100,49 $US sur 100 $US ce mois-ci · Recharge automatique désactivée
+Utilisation de cette semaine par produit
+Claude Code
+10 %
+Conversations
+0 %
+Cowork
+90 %
+Autre
+0 %
+Dernière mise à jour : à l'instant`;
+
+test("forfait : lecture du texte copié de la page Utilisation", () => {
+  const r = lireForfait(PAGE_UTILISATION);
+  assert.deepEqual(r.valeurs, { session_pct: 17, semaine_pct: 12, claude_code: 10, conversations: 0, cowork: 90, autre: 0, depense: 100.49, plafond: 100 });
+  assert.equal(r.trouves, 8);
+  // même texte aplati sur une ligne, avec le menu latéral qui contient « Claude Code » sans pourcentage
+  const plat = ("Préférences Général Compte Claude Code Claude in Chrome " + PAGE_UTILISATION).replace(/\n/g, " ");
+  assert.deepEqual(lireForfait(plat).valeurs, r.valeurs);
+  const vide = lireForfait("rien d'utile ici");
+  assert.equal(vide.trouves, 0);
+  assert.equal(vide.valeurs.cowork, null);
+  assert.equal(lireForfait("Cowork 190 %").valeurs.cowork, null);
+});
+
+test("alertes du forfait : plafond de dépenses mensuel et limite hebdomadaire", () => {
+  const base = { budget: 1000, depenses: [dep("2026-11-05", 10)] };
+  const e = etatAvec(base);
+  e.forfait = [{ date: "2026-11-10", depense: 10, plafond: 100, semaine_pct: 5 }, { date: "2026-11-18", depense: 100.49, plafond: 100, semaine_pct: 85 }];
+  assert.equal(dernierForfait(e).date, "2026-11-18");
+  const al = alertes(e, "2026-11", "2026-11-18").filter((a) => a.categorie === "Forfait");
+  assert.equal(al.length, 2);
+  assert.equal(al[0].niveau, "critique");
+  assert.match(al[0].message, /Plafond de dépenses mensuel du forfait atteint/);
+  assert.equal(al[1].niveau, "attention");
+  e.forfait = [{ date: "2026-11-18", depense: 85, plafond: 100, semaine_pct: 10 }];
+  const a2 = alertes(e, "2026-11", "2026-11-18").filter((a) => a.categorie === "Forfait");
+  assert.equal(a2.length, 1);
+  assert.equal(a2[0].niveau, "attention");
+  e.forfait = [{ date: "2026-11-18", depense: 10, plafond: 100, semaine_pct: 10 }];
+  assert.equal(alertes(e, "2026-11", "2026-11-18").filter((a) => a.categorie === "Forfait").length, 0);
+  assert.equal(alertes(etatAvec(base), "2026-11", "2026-11-18").filter((a) => a.categorie === "Forfait").length, 0);
 });
