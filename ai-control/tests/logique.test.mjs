@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   etatInitial, normaliser, lireEtat, lireCsv, parseNombre, parseDate,
-  importerDepenses, importerUsages, resumeMois, alertes, agreger, creditsParProjet, listerConversations, bilanReel, tauxReel, conseilsParProjet, formaterCompact, formaterNombre, usagesSemaine, moinsJours, sessionsAgregees, moisPrecedents, parJour, projeterMois,
+  importerDepenses, importerUsages, resumeMois, alertes, agreger, creditsParProjet, listerConversations, bilanReel, tauxReel, conseilsParProjet, formaterCompact, formaterNombre, usagesSemaine, usagesPlage, moinsJours, sessionsAgregees, moisPrecedents, parJour, projeterMois,
 } from "../public/logique.mjs";
 
 function etatAvec({ budget = 0, depenses = [], usages = [], config = {} } = {}) {
@@ -300,4 +300,22 @@ test("alerte hebdomadaire : un projet dépasse la limite sur les 7 derniers jour
   assert.equal(al.length, 1);
   assert.match(al[0].message, /Gros a consommé 150 tokens ces 7 derniers jours/);
   assert.equal(alertes(etatAvec({ budget: 1000, usages: [use("2026-11-17", "e", 150, { projet: "Gros" })] }), "2026-11", "2026-11-18").filter((a) => a.categorie === "Limite").length, 0);
+});
+
+test("plage de dates : bornes comprises, relevés uniquement", () => {
+  const u = [
+    { ...use("2026-11-18", "e", 1), cumul: 1 },
+    use("2026-11-02", "e", 2),
+    use("2026-11-09", "e", 4),
+    use("2026-11-16", "e", 8),
+  ];
+  assert.deepEqual(usagesPlage(u, "2026-11-02", "2026-11-09").map((x) => x.valeur), [2, 4]);
+  assert.deepEqual(usagesPlage(u, "2026-11-10", "").map((x) => x.valeur), [8]);
+  assert.deepEqual(usagesPlage(u, "", "").map((x) => x.valeur), [2, 4, 8]);
+});
+
+test("projets actifs du mois : dernière activité dans le mois, historique compris", () => {
+  const e = etatAvec({ usages: [{ ...use("2026-11-18", "e", 100, { projet: "A" }), cumul: 1 }, use("2026-11-03", "e", 7, { projet: "B" }), use("2026-10-30", "e", 7, { projet: "C" })] });
+  assert.equal(resumeMois(e, "2026-11").projetsActifs, 2);
+  assert.equal(resumeMois(e, "2026-11").tokens, 7);
 });

@@ -130,6 +130,10 @@ export function moinsJours(iso, n) {
 export const usagesSemaine = (usages, aujourdhui) =>
   usages.filter((u) => !u.cumul && u.date >= moinsJours(aujourdhui, 6) && u.date <= aujourdhui);
 
+// Plage de dates (bornes comprises), à partir des relevés uniquement (jamais l'historique « cumul »).
+export const usagesPlage = (usages, du, au) =>
+  usages.filter((u) => !u.cumul && (!du || u.date >= du) && (!au || u.date <= au));
+
 // Une session (conversation) peut avoir plusieurs lignes, une par relevé : on les regroupe.
 export function sessionsAgregees(usages) {
   const par = new Map();
@@ -219,7 +223,7 @@ export function resumeMois(etat, mois) {
     restant: budget - depense,
     pourcentage: budget > 0 ? (depense / budget) * 100 : null,
     utilisateursActifs: new Set(us.map((u) => u.utilisateur)).size,
-    projetsActifs: new Set(us.filter((u) => u.nature === "api").map((u) => u.projet)).size,
+    projetsActifs: new Set(etat.usages.filter((u) => u.nature === "api" && u.date.slice(0, 7) === mois).map((u) => u.projet)).size,
     tokens: somme(us.filter((u) => u.nature === "api"), (u) => u.valeur),
     coutApi: coutsApi.length ? somme(coutsApi, (u) => u.cout) : null,
     provenance: compterSources([...dep, ...us]),
@@ -269,13 +273,14 @@ export function alertes(etat, mois, aujourdhui = new Date().toISOString().slice(
     }
   }
   const taux = tauxReel(etat);
-  const cr = creditsParProjet(api, "tokens", taux);
+  const cumulApi = etat.usages.filter((u) => u.nature === "api");
+  const cr = creditsParProjet(cumulApi, "tokens", taux);
   if (cr.tokens > 0 && cr.projets.length >= 2 && cr.projets[0].part >= 50) {
     const top = cr.projets[0];
-    const lignes = sessionsAgregees(api).filter((x) => x.projet === top.nom).sort((a, b) => b.tokens - a.tokens);
+    const lignes = sessionsAgregees(cumulApi).filter((x) => x.projet === top.nom).sort((a, b) => b.tokens - a.tokens);
     const conv = lignes[0] && lignes[0].tokens / top.tokens >= 0.6 ? ` Une seule conversation en est la cause : « ${lignes[0].conversation} ».` : "";
     const reel = taux > 0 ? ` (environ ${formaterMontant(top.reel, c.devise)} de dépense réelle estimée)` : "";
-    out.push({ niveau: "attention", categorie: "Projet", message: `Le projet ${top.nom} concentre ${Math.round(top.part)} % de la consommation mesurée du mois${reel}.${conv}` });
+    out.push({ niveau: "attention", categorie: "Projet", message: `Le projet ${top.nom} concentre ${Math.round(top.part)} % de la consommation cumulée${reel}.${conv}` });
   }
   if (r.budget <= 0) {
     out.push({ niveau: "info", categorie: "Configuration", message: "Aucun budget mensuel défini : les alertes de dépassement sont inactives. Renseignez-le dans Alertes." });

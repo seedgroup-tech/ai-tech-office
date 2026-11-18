@@ -67,7 +67,7 @@
     </div>
   </div>
   <div class="carte" data-dir>
-    <div class="tete"><h2>Où part la dépense réelle</h2><p>Estimation : tokens du projet × coût réel du token</p></div>
+    <div class="tete"><h2>Où part la dépense réelle</h2><p>Cumul à ce jour · estimation : tokens du projet × coût réel du token</p></div>
     <div id="graph-projets-apercu"></div>
   </div>
   <div class="carte" data-dir>
@@ -143,11 +143,13 @@
   <div class="tete"><h2>Projets</h2><p>Quel projet consomme combien : dépense réelle estimée, tokens et nombre de sessions.</p></div>
   <div class="form filtres">
     <label>Période
-      <select id="p-periode"><option value="mois">Mois sélectionné</option><option value="semaine">7 derniers jours</option><option value="tout">Toutes périodes</option></select>
+      <select id="p-periode"><option value="cumul">Cumul à ce jour</option><option value="mois">Mois sélectionné</option><option value="semaine">7 derniers jours</option><option value="plage">Plage de dates</option></select>
     </label>
     <label>Classer par
       <select id="p-tri"><option value="reel">Dépense réelle estimée</option><option value="sessions">Nombre de sessions</option></select>
     </label>
+    <label id="p-du-bloc" hidden>Du <input type="date" id="p-du"></label>
+    <label id="p-au-bloc" hidden>Au <input type="date" id="p-au"></label>
   </div>
   <div class="kpi" id="kpi-projets"></div>
   <div class="carte">
@@ -160,7 +162,7 @@
       <tbody id="t-projets"></tbody>
     </table>
   </div>
-  <p class="note">La dépense réelle d'un projet est estimée ainsi : coût réel moyen du token (vos dépenses réelles ÷ l'ensemble des tokens, hors relectures de cache) × les tokens du projet. Tous les tokens sont comptés au même prix, quel que soit le modèle : c'est une approximation. Le suivi par période a démarré le 18 novembre 2026. Avant, seul le total de chaque session est connu : cet historique n'est pas réparti sur les mois et n'apparaît que dans « Toutes périodes ». Les relectures de cache (très nombreuses, très peu coûteuses) ne sont pas comptées.</p>
+  <p class="note">La dépense réelle d'un projet est estimée ainsi : coût réel moyen du token (vos dépenses réelles ÷ l'ensemble des tokens, hors relectures de cache) × les tokens du projet. Tous les tokens sont comptés au même prix, quel que soit le modèle : c'est une approximation. Par défaut, la page montre le cumul à ce jour. Un mois, les 7 derniers jours ou une plage de dates s'appuient sur les relevés hebdomadaires (un chaque lundi, le premier le 23 novembre 2026) : avant le 18 novembre 2026, seul le total de chaque session est connu et il n'est pas réparti dans le temps. Les relectures de cache (très nombreuses, très peu coûteuses) ne sont pas comptées.</p>
 </section>
 
 <!-- Conversations -->
@@ -171,7 +173,7 @@
       <select id="c-projet"><option value="">Tous les projets</option></select>
     </label>
     <label>Période
-      <select id="c-periode"><option value="mois">Mois sélectionné</option><option value="semaine">7 derniers jours</option><option value="tout">Toutes périodes</option></select>
+      <select id="c-periode"><option value="cumul">Cumul à ce jour</option><option value="mois">Mois sélectionné</option><option value="semaine">7 derniers jours</option><option value="plage">Plage de dates</option></select>
     </label>
     <label>Tokens minimum (hors relectures)
       <input type="number" id="c-tokens" min="0" step="1" value="0" inputmode="numeric">
@@ -182,6 +184,8 @@
     <label>Classer par
       <select id="c-tri"><option value="reel">Dépense réelle estimée</option><option value="date">Dernière activité</option></select>
     </label>
+    <label id="c-du-bloc" hidden>Du <input type="date" id="c-du"></label>
+    <label id="c-au-bloc" hidden>Au <input type="date" id="c-au"></label>
   </div>
   <div class="tableau">
     <table>

@@ -1,7 +1,7 @@
 // AI CONTROL (M-013) : page partagée. Les données viennent de l'API (/api), jamais du navigateur.
 // Les droits sont appliqués par le serveur ; ce script ne fait que masquer ce qui ne sert pas au rôle.
 import {
-  etatInitial, moisCourant, resumeMois, alertes, agreger, creditsParProjet, listerConversations, bilanReel, tauxReel, conseilsParProjet, formaterCompact, usagesSemaine, depensesDuMois, usagesDuMois,
+  etatInitial, moisCourant, resumeMois, alertes, agreger, creditsParProjet, listerConversations, bilanReel, tauxReel, conseilsParProjet, formaterCompact, usagesSemaine, usagesPlage, depensesDuMois, usagesDuMois,
   depensesParMois, importerDepenses, importerUsages, formaterMontant, formaterNombre,
   dateValide, parJour, projeterMois, SOURCES, TYPES, NATURES,
 } from "./logique.mjs";
@@ -119,15 +119,16 @@ function rendreApercu() {
   const r = resumeMois(etat, mois);
   const dir = estDirection();
   const depassement = r.budget > 0 && r.restant < 0;
-  const aApi = usagesDuMois(etat, mois).some((u) => u.nature === "api");
+  const aApi = etat.usages.some((u) => u.nature === "api");
   const cartes = [
     kpi("Dépenses IA", formaterMontant(r.depense, c.devise), `${depensesDuMois(etat, mois).length} ligne(s) ce mois`),
     kpi("Budget mensuel", r.budget > 0 ? formaterMontant(r.budget, c.devise) : "Non défini", dir ? "réglable dans Alertes" : "budget global SeedScaleUp"),
     kpi("Restant", r.budget > 0 ? formaterMontant(r.restant, c.devise) : "—", depassement ? "dépassement" : "disponible", depassement ? "critique" : ""),
   ];
   if (dir) {
-    cartes.push(kpi("Projets actifs", aApi ? formaterNombre(r.projetsActifs) : "—", aApi ? "avec un usage mesuré ce mois" : "mesure par période depuis le 18 nov. 2026"));
-    cartes.push(kpi("Tokens API (hors relectures)", aApi ? formaterCompact(r.tokens) : "—", aApi ? `${formaterNombre(r.tokens)} tokens` : "mesure par période depuis le 18 nov. 2026"));
+    const cumulTokens = etat.usages.filter((u) => u.nature === "api").reduce((s, u) => s + u.valeur, 0);
+    cartes.push(kpi("Projets actifs", aApi ? formaterNombre(r.projetsActifs) : "—", aApi ? "dernière activité ce mois" : "aucun usage enregistré"));
+    cartes.push(kpi("Tokens cumulés (hors relectures)", aApi ? formaterCompact(cumulTokens) : "—", aApi ? `${formaterNombre(cumulTokens)} tokens à ce jour` : "aucun usage enregistré"));
   } else {
     cartes.push(kpi("Mes tokens API", aApi ? formaterNombre(r.tokens) : "—", aApi ? "ce mois" : "aucun usage saisi"));
   }
@@ -260,25 +261,35 @@ const METRIQUES = {
 };
 
 // Usages API de la période choisie ("tout", le mois sélectionné ou les 7 derniers jours).
-const usagesApi = (periode) => (periode === "semaine" ? usagesSemaine(etat.usages, aujourdhui()) : periode === "mois" ? usagesDuMois(etat, mois) : etat.usages).filter((u) => u.nature === "api");
+const usagesApi = (periode, du = "", au = "") => (
+  periode === "semaine" ? usagesSemaine(etat.usages, aujourdhui())
+    : periode === "mois" ? usagesDuMois(etat, mois)
+      : periode === "plage" ? usagesPlage(etat.usages, du, au)
+        : etat.usages
+).filter((u) => u.nature === "api");
 
 // Le collaborateur ne voit que ses propres tokens : le coût réel du token se calcule sur l'ensemble, il n'est donc pas affiché.
 const tauxAffiche = () => (estDirection() ? tauxReel(etat) : 0);
 const montantReel = (v, c) => (estDirection() ? formaterMontant(v, c.devise) : "—");
 
 function messageVide(periode) {
-  return periode === "tout"
+  return periode === "cumul"
     ? "Aucun usage API enregistré."
-    : `Aucune consommation mesurée sur cette période : le suivi par période a démarré le 18 novembre 2026 (un relevé chaque lundi). <button type="button" class="petit" data-voir-tout>Voir toutes périodes</button>`;
+    : `Aucun relevé sur cette période : les relevés hebdomadaires ont démarré le 18 novembre 2026 (un chaque lundi, le premier le 23 novembre). <button type="button" class="petit" data-voir-cumul>Voir le cumul à ce jour</button>`;
+}
+
+function majPlage(prefixe, periode) {
+  for (const x of ["du", "au"]) $(`${prefixe}-${x}-bloc`).hidden = periode !== "plage";
 }
 
 function rendreProjets() {
   const c = etat.config;
   const periode = $("p-periode").value;
+  majPlage("p", periode);
   const tri = $("p-tri").value;
   const m = METRIQUES[tri] || METRIQUES.reel;
   const taux = tauxAffiche();
-  const r = creditsParProjet(usagesApi(periode), tri, taux);
+  const r = creditsParProjet(usagesApi(periode, $("p-du").value, $("p-au").value), tri, taux);
   $("kpi-projets").innerHTML = [
     kpi("Dépense réelle estimée", montantReel(r.reel, c), `${r.projets.length} projets`),
     kpi("Tokens (hors relectures)", formaterCompact(r.tokens), `${formaterNombre(r.tokens)} tokens`),
@@ -297,7 +308,7 @@ function rendreProjets() {
         <td data-label="Tokens (hors relectures)">${esc(formaterNombre(p.tokens))}</td>
         <td data-label="Sessions">${p.sessions}</td>
         <td data-label="Dernière activité">${esc(p.derniere)}</td></tr>`).join("")
-    : `<tr><td colspan="6" class="vide">${messageVide(periode)}</td></tr>`;
+    : `<tr><td colspan="6" class="vide">Aucune ligne.</td></tr>`;
   $("dl-projets").innerHTML = [...new Set(etat.usages.map((u) => u.projet))].sort().map((v) => `<option value="${esc(v)}">`).join("");
 }
 
@@ -306,6 +317,7 @@ const NB_CONVERSATIONS = 300;
 function rendreConversations() {
   const c = etat.config;
   const periode = $("c-periode").value;
+  majPlage("c", periode);
   const select = $("c-projet");
   const projets = [...new Set(etat.usages.filter((u) => u.nature === "api").map((u) => u.projet))].sort((a, b) => a.localeCompare(b, "fr"));
   const choisi = projets.includes(select.value) ? select.value : "";
@@ -313,7 +325,7 @@ function rendreConversations() {
   select.value = choisi;
   const nombre = (id) => { const n = Number($(id).value); return Number.isFinite(n) && n > 0 ? n : 0; };
   const taux = tauxAffiche();
-  const liste = listerConversations(usagesApi(periode), {
+  const liste = listerConversations(usagesApi(periode, $("c-du").value, $("c-au").value), {
     projet: choisi, tokensMin: nombre("c-tokens"), reelMin: taux > 0 ? nombre("c-cout") : 0, taux, tri: $("c-tri").value,
   });
   const total = liste.reduce((s, x) => s + x.reel, 0);
@@ -327,7 +339,7 @@ function rendreConversations() {
         <td data-label="Tokens (hors relectures)">${esc(formaterNombre(x.tokens))}</td>
         <td data-label="Dépense réelle estimée">${esc(montantReel(x.reel, c))}</td>
         <td data-label="Dernière activité">${esc(x.date)}${x.cumul ? " · total cumulé" : ""}</td></tr>`).join("")
-    : `<tr><td colspan="5" class="vide">${periode === "tout" ? "Aucune conversation ne correspond à ces filtres." : messageVide(periode)}</td></tr>`;
+    : `<tr><td colspan="5" class="vide">${periode === "cumul" ? "Aucune conversation ne correspond à ces filtres." : messageVide(periode)}</td></tr>`;
 }
 
 function rendreDepenses() {
@@ -503,14 +515,15 @@ $("mois").addEventListener("change", (e) => {
 });
 
 for (const id of ["p-periode", "p-tri"]) $(id).addEventListener("change", rendreProjets);
-for (const id of ["c-projet", "c-periode", "c-tri", "c-tokens", "c-cout"]) {
+for (const id of ["c-projet", "c-periode", "c-tri", "c-du", "c-au", "c-tokens", "c-cout"]) {
   $(id).addEventListener(id === "c-tokens" || id === "c-cout" ? "input" : "change", () => { rendreConversations(); appliquerLargeurs(); });
 }
+for (const id of ["p-du", "p-au"]) $(id).addEventListener("change", () => { rendreProjets(); appliquerLargeurs(); });
 for (const id of ["p-periode", "p-tri"]) $(id).addEventListener("change", appliquerLargeurs);
 document.addEventListener("click", (e) => {
-  if (!(e.target instanceof Element) || !e.target.closest("[data-voir-tout]")) return;
-  $("p-periode").value = "tout";
-  $("c-periode").value = "tout";
+  if (!(e.target instanceof Element) || !e.target.closest("[data-voir-cumul]")) return;
+  $("p-periode").value = "cumul";
+  $("c-periode").value = "cumul";
   rendreProjets();
   rendreConversations();
   appliquerLargeurs();
