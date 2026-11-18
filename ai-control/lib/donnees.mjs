@@ -13,7 +13,7 @@ const MAX_LIBELLE = 200;
 const MAX_TEXTE = 80;
 const MAX_CONVERSATION = 120;
 const COLONNES_DEPENSE = "id, date, type, libelle, montant, source";
-const COLONNES_USAGE = "id, date, utilisateur, projet, nature, valeur, cout, source, conversation";
+const COLONNES_USAGE = "id, date, utilisateur, projet, nature, valeur, cout, source, conversation, session, cumul";
 
 const reponse = (corps, statut = 200) => ({ statut, corps });
 const erreur = (statut, message) => ({ statut, corps: { erreur: message } });
@@ -43,7 +43,8 @@ export function preparerUsage(l, emailAppelant, role) {
   };
   if (!valideUsage(candidat)) return null;
   const conversation = typeof l?.conversation === "string" && l.conversation.trim() ? l.conversation.trim().slice(0, MAX_CONVERSATION) : null;
-  return { date: candidat.date, utilisateur, projet, nature: candidat.nature, valeur: candidat.valeur, cout: candidat.cout, source: candidat.source, conversation };
+  const session = texte(l?.session, MAX_TEXTE);
+  return { date: candidat.date, utilisateur, projet, nature: candidat.nature, valeur: candidat.valeur, cout: candidat.cout, source: candidat.source, conversation, session };
 }
 
 export function preparerConfig(c) {
@@ -54,12 +55,13 @@ export function preparerConfig(c) {
   const ratio = optNombre(c?.ratioAnormal);
   const limU = optNombre(c?.limiteUtilisateurTokens);
   const limP = optNombre(c?.limiteProjetTokens);
+  const limPS = optNombre(c?.limiteProjetTokensSemaine);
   const devise = texte(c?.devise, 10) || "USD";
   if (budget < 0 || seuilAlerte === null || seuilAlerte < 1 || seuilAlerte > 100) return null;
   if (seuilCritique === null || seuilCritique < 1 || seuilCritique > 200) return null;
   if (ratio === null || ratio < 1) return null;
-  if ((limU !== null && limU < 0) || (limP !== null && limP < 0)) return null;
-  return { budgetMensuel: budget, devise, seuilAlerte, seuilCritique, ratioAnormal: ratio, limiteUtilisateurTokens: limU, limiteProjetTokens: limP };
+  if ((limU !== null && limU < 0) || (limP !== null && limP < 0) || (limPS !== null && limPS < 0)) return null;
+  return { budgetMensuel: budget, devise, seuilAlerte, seuilCritique, ratioAnormal: ratio, limiteUtilisateurTokens: limU, limiteProjetTokens: limP, limiteProjetTokensSemaine: limPS };
 }
 
 // ---------- lecture ----------
@@ -112,8 +114,8 @@ export function ajouterDepenses(db, lignes, email) {
 
 export function ajouterUsages(db, lignes, email, role) {
   return ajouterLot(db, lignes, (l) => preparerUsage(l, email, role),
-    "INSERT INTO usages (id, date, utilisateur, projet, nature, valeur, cout, source, conversation, cree_par, cree_le) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-    (p) => [p.date, p.utilisateur, p.projet, p.nature, p.valeur, p.cout, p.source, p.conversation, email]);
+    "INSERT INTO usages (id, date, utilisateur, projet, nature, valeur, cout, source, conversation, session, cree_par, cree_le) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+    (p) => [p.date, p.utilisateur, p.projet, p.nature, p.valeur, p.cout, p.source, p.conversation, p.session, email]);
 }
 
 export async function supprimer(db, table, id, email, role) {

@@ -143,7 +143,7 @@
   <div class="tete"><h2>Projets</h2><p>Quel projet consomme combien : coût, tokens et nombre de sessions.</p></div>
   <div class="form filtres">
     <label>Période
-      <select id="p-periode"><option value="tout">Toutes périodes</option><option value="mois">Mois sélectionné</option></select>
+      <select id="p-periode"><option value="mois">Mois sélectionné</option><option value="semaine">7 derniers jours</option><option value="tout">Toutes périodes</option></select>
     </label>
     <label>Classer par
       <select id="p-tri"><option value="cout">Coût</option><option value="tokens">Tokens</option><option value="sessions">Nombre de sessions</option></select>
@@ -160,7 +160,7 @@
       <tbody id="t-projets"></tbody>
     </table>
   </div>
-  <p class="note">Montants estimés par la plateforme au tarif des tokens (source « Estimé »), non additionnés aux dépenses du compte. Chaque session est datée de sa dernière activité : le coût d'une session longue n'est pas réparti sur les mois. Les tokens comptent l'entrée, la sortie et le cache.</p>
+  <p class="note">Montants estimés par la plateforme au tarif des tokens (source « Estimé »), non additionnés aux dépenses du compte. Jusqu'au 18 novembre 2026, seul le total de chaque session est connu : il est daté de sa dernière activité et n'est pas réparti sur les périodes (ces lignes sont repérées « total cumulé »). Depuis, chaque relevé ajoute la consommation survenue depuis le précédent, ce qui permet de suivre un projet semaine par semaine. Les tokens comptent l'entrée, la sortie et le cache.</p>
 </section>
 
 <!-- Conversations -->
@@ -171,7 +171,7 @@
       <select id="c-projet"><option value="">Tous les projets</option></select>
     </label>
     <label>Période
-      <select id="c-periode"><option value="tout">Toutes périodes</option><option value="mois">Mois sélectionné</option></select>
+      <select id="c-periode"><option value="mois">Mois sélectionné</option><option value="semaine">7 derniers jours</option><option value="tout">Toutes périodes</option></select>
     </label>
     <label>Tokens minimum
       <input type="number" id="c-tokens" min="0" step="1" value="0" inputmode="numeric">
@@ -249,7 +249,8 @@
         <label>Alerte critique à (%) <input type="number" name="seuilCritique" min="1" max="200" step="1"></label>
         <label>Usage anormal : multiple de la médiane <input type="number" name="ratioAnormal" min="1" step="0.1"></label>
         <label>Limite de tokens par utilisateur (vide = aucune) <input type="number" name="limiteUtilisateurTokens" min="0" step="1"></label>
-        <label>Limite de tokens par projet (vide = aucune) <input type="number" name="limiteProjetTokens" min="0" step="1"></label>
+        <label>Limite de tokens par projet et par mois (vide = aucune) <input type="number" name="limiteProjetTokens" min="0" step="1"></label>
+        <label>Limite de tokens par projet et par semaine (vide = aucune) <input type="number" name="limiteProjetTokensSemaine" min="0" step="1"></label>
         <button type="submit" class="go">Enregistrer les seuils</button>
       </form>
     </div>

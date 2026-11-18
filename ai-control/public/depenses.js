@@ -1,7 +1,7 @@
 // AI CONTROL (M-013) : page partagée. Les données viennent de l'API (/api), jamais du navigateur.
 // Les droits sont appliqués par le serveur ; ce script ne fait que masquer ce qui ne sert pas au rôle.
 import {
-  etatInitial, moisCourant, resumeMois, alertes, agreger, creditsParProjet, listerConversations, bilanTokens, conseilsParProjet, formaterCompact, depensesDuMois, usagesDuMois,
+  etatInitial, moisCourant, resumeMois, alertes, agreger, creditsParProjet, listerConversations, bilanTokens, conseilsParProjet, formaterCompact, usagesSemaine, depensesDuMois, usagesDuMois,
   depensesParMois, importerDepenses, importerUsages, formaterMontant, formaterNombre,
   dateValide, parJour, projeterMois, SOURCES, TYPES, NATURES,
 } from "./logique.mjs";
@@ -145,7 +145,7 @@ function rendreApercu() {
   $("projection").textContent = p !== null && dir ? `Projection de fin de mois (estimation linéaire, à confirmer) : ${formaterMontant(p, c.devise)}` : "";
 
   // Le collaborateur ne voit que les alertes générales de budget.
-  const al = alertes(etat, mois).filter((a) => dir || a.categorie === "Budget");
+  const al = alertes(etat, mois, aujourdhui()).filter((a) => dir || a.categorie === "Budget");
   $("alertes-resume").innerHTML = al.length ? al.slice(0, 5).map(alerteHtml).join("") : `<p class="aide">Aucune alerte ce mois.</p>`;
 
   if (dir) {
@@ -259,7 +259,7 @@ const METRIQUES = {
 };
 
 // Usages API de la période choisie ("tout" ou le mois sélectionné).
-const usagesApi = (periode) => (periode === "mois" ? usagesDuMois(etat, mois) : etat.usages).filter((u) => u.nature === "api");
+const usagesApi = (periode) => (periode === "semaine" ? usagesSemaine(etat.usages, aujourdhui()) : periode === "mois" ? usagesDuMois(etat, mois) : etat.usages).filter((u) => u.nature === "api");
 
 function rendreProjets() {
   const c = etat.config;
@@ -311,7 +311,7 @@ function rendreConversations() {
         <td data-label="Projet">${esc(x.projet)}</td>
         <td data-label="Tokens">${esc(formaterNombre(x.tokens))}</td>
         <td data-label="Coût">${esc(formaterMontant(x.cout, c.devise))}</td>
-        <td data-label="Dernière activité">${esc(x.date)}</td></tr>`).join("")
+        <td data-label="Dernière activité">${esc(x.date)}${x.cumul ? " · total cumulé" : ""}</td></tr>`).join("")
     : vide(5, "Aucune conversation ne correspond à ces filtres.");
 }
 
@@ -333,7 +333,7 @@ function rendreDepenses() {
 }
 
 function rendreAlertes() {
-  const al = alertes(etat, mois);
+  const al = alertes(etat, mois, aujourdhui());
   $("alertes-liste").innerHTML = al.length ? al.map(alerteHtml).join("") : `<p class="aide">Aucune alerte pour ce mois.</p>`;
 }
 
@@ -348,6 +348,7 @@ function remplirConfig() {
   val("ratioAnormal", c.ratioAnormal);
   val("limiteUtilisateurTokens", c.limiteUtilisateurTokens);
   val("limiteProjetTokens", c.limiteProjetTokens);
+  val("limiteProjetTokensSemaine", c.limiteProjetTokensSemaine);
 }
 
 function rendre() {
@@ -433,6 +434,7 @@ $("f-config").addEventListener("submit", async (e) => {
     ratioAnormal: num("ratioAnormal"),
     limiteUtilisateurTokens: num("limiteUtilisateurTokens"),
     limiteProjetTokens: num("limiteProjetTokens"),
+    limiteProjetTokensSemaine: num("limiteProjetTokensSemaine"),
   };
   if (await ecrire("PUT", "/config", corps, "Seuils enregistrés.")) remplirConfig();
 });

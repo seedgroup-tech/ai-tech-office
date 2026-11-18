@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   etatInitial, normaliser, lireEtat, lireCsv, parseNombre, parseDate,
-  importerDepenses, importerUsages, resumeMois, alertes, agreger, creditsParProjet, listerConversations, bilanTokens, conseilsParProjet, formaterCompact, formaterNombre, moisPrecedents, parJour, projeterMois,
+  importerDepenses, importerUsages, resumeMois, alertes, agreger, creditsParProjet, listerConversations, bilanTokens, conseilsParProjet, formaterCompact, formaterNombre, usagesSemaine, moinsJours, sessionsAgregees, moisPrecedents, parJour, projeterMois,
 } from "../public/logique.mjs";
 
 function etatAvec({ budget = 0, depenses = [], usages = [], config = {} } = {}) {
@@ -239,4 +239,54 @@ test("bonnes pratiques par projet : conversation dominante, poids du projet, tit
   assert.match(r[0].conseils[2], /titre parlant/);
   assert.deepEqual(r[1].conseils, ["Rien d'anormal : continuez avec une conversation par tâche."]);
   assert.deepEqual(conseilsParProjet([]), []);
+});
+
+test("jours : moins n jours, y compris à cheval sur un mois", () => {
+  assert.equal(moinsJours("2026-11-18", 6), "2026-11-12");
+  assert.equal(moinsJours("2026-03-02", 6), "2026-02-24");
+});
+
+test("7 derniers jours : exclut les lignes de total cumulé et les dates hors fenêtre", () => {
+  const u = [
+    { ...use("2026-11-18", "e", 100), cumul: 1 },
+    use("2026-11-18", "e", 10),
+    use("2026-11-12", "e", 20),
+    use("2026-11-11", "e", 40),
+    use("2026-11-19", "e", 80),
+  ];
+  assert.deepEqual(usagesSemaine(u, "2026-11-18").map((x) => x.valeur), [10, 20]);
+});
+
+test("sessions : plusieurs relevés d'une même session sont regroupés", () => {
+  const u = [
+    { ...use("2026-11-10", "e", 100, { projet: "P", cout: 5 }), session: "s1", conversation: "Titre", cumul: 1 },
+    { ...use("2026-11-17", "e", 50, { projet: "P", cout: 3 }), session: "s1", conversation: "Titre" },
+    use("2026-11-17", "e", 7, { projet: "P", cout: 1 }),
+  ];
+  const s = sessionsAgregees(u);
+  assert.equal(s.length, 2);
+  const s1 = s.find((x) => x.cle === "s1");
+  assert.equal(s1.tokens, 150);
+  assert.equal(s1.cout, 8);
+  assert.equal(s1.date, "2026-11-17");
+  assert.equal(s1.cumul, true);
+  assert.equal(creditsParProjet(u).projets[0].sessions, 2);
+  assert.equal(listerConversations(u).length, 2);
+});
+
+test("alerte hebdomadaire : un projet dépasse la limite sur les 7 derniers jours", () => {
+  const e = etatAvec({
+    budget: 1000,
+    config: { limiteProjetTokensSemaine: 100 },
+    usages: [
+      { ...use("2026-11-18", "e", 9999, { projet: "Ancien" }), cumul: 1 },
+      use("2026-11-17", "e", 150, { projet: "Gros" }),
+      use("2026-11-16", "e", 60, { projet: "Petit" }),
+      use("2026-11-01", "e", 500, { projet: "Vieux" }),
+    ],
+  });
+  const al = alertes(e, "2026-11", "2026-11-18").filter((a) => a.categorie === "Limite");
+  assert.equal(al.length, 1);
+  assert.match(al[0].message, /Gros a consommé 150 tokens ces 7 derniers jours/);
+  assert.equal(alertes(etatAvec({ budget: 1000, usages: [use("2026-11-17", "e", 150, { projet: "Gros" })] }), "2026-11", "2026-11-18").filter((a) => a.categorie === "Limite").length, 0);
 });

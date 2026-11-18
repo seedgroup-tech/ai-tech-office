@@ -117,3 +117,10 @@ test("usage : le titre de conversation est facultatif, nettoyé et borné à 120
   assert.equal(preparerUsage({ ...base, conversation: "x".repeat(300) }, DIR, "direction").conversation.length, 120);
   assert.equal(preparerUsage({ ...base, conversation: 42 }, DIR, "direction").conversation, null);
 });
+
+test("config : la limite hebdomadaire par projet est acceptée, facultative et jamais négative", () => {
+  const base = { budgetMensuel: 200, devise: "USD", seuilAlerte: 80, seuilCritique: 100, ratioAnormal: 2, limiteUtilisateurTokens: null, limiteProjetTokens: null };
+  assert.equal(preparerConfig({ ...base, limiteProjetTokensSemaine: 1000000000 }).limiteProjetTokensSemaine, 1000000000);
+  assert.equal(preparerConfig(base).limiteProjetTokensSemaine, null);
+  assert.equal(preparerConfig({ ...base, limiteProjetTokensSemaine: -1 }), null);
+});
