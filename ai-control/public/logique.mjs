@@ -262,10 +262,10 @@ export function alertes(etat, mois, aujourdhui = new Date().toISOString().slice(
     const top = cr.projets[0];
     const lignes = sessionsAgregees(api).filter((x) => x.projet === top.nom).sort((a, b) => b.cout - a.cout);
     const conv = lignes[0] && top.cout > 0 && lignes[0].cout / top.cout >= 0.6 ? ` Une seule conversation en est la cause : « ${lignes[0].conversation} ».` : "";
-    out.push({ niveau: "attention", categorie: "Projet", message: `Le projet ${top.nom} concentre ${Math.round(top.part)} % du coût estimé du mois (${formaterMontant(top.cout, c.devise)} sur ${formaterMontant(cr.total, c.devise)}).${conv}` });
+    out.push({ niveau: "attention", categorie: "Projet", message: `Le projet ${top.nom} concentre ${Math.round(top.part)} % de la valeur au tarif catalogue du mois (${formaterMontant(top.cout, c.devise)} sur ${formaterMontant(cr.total, c.devise)}).${conv}` });
   }
   if (r.depense > 0 && r.coutApi !== null && r.coutApi > 3 * r.depense) {
-    out.push({ niveau: "info", categorie: "Estimation", message: `Le coût estimé des sessions (${formaterMontant(r.coutApi, c.devise)}) vaut ${Math.round(r.coutApi / r.depense)} fois vos dépenses réelles du mois (${formaterMontant(r.depense, c.devise)}) : c'est une valeur de référence au tarif des tokens, pas une facture.` });
+    out.push({ niveau: "info", categorie: "Estimation", message: `La valeur au tarif catalogue des sessions (${formaterMontant(r.coutApi, c.devise)}) vaut ${Math.round(r.coutApi / r.depense)} fois vos dépenses réelles du mois (${formaterMontant(r.depense, c.devise)}) : ce n'est pas une facture, seules vos dépenses réelles comptent.` });
   }
   if (r.budget <= 0) {
     out.push({ niveau: "info", categorie: "Configuration", message: "Aucun budget mensuel défini : les alertes de dépassement sont inactives. Renseignez-le dans Alertes." });
@@ -307,10 +307,10 @@ export function conseilsParProjet(usages, devise = "USD", max = 8) {
     const partTop = p.cout > 0 ? (top.cout / p.cout) * 100 : 0;
     const conseils = [];
     if (top.cout >= 100 && partTop >= 50) {
-      conseils.push(`La conversation « ${top.conversation} » pèse ${Math.round(partTop)} % du coût du projet (${formaterMontant(top.cout, devise)}, ${formaterCompact(top.tokens)} de tokens). Plus une conversation est longue, plus chaque message coûte cher : ouvrez une conversation par tâche et notez l'état d'avancement dans un fichier (CLAUDE.md ou notes) pour repartir proprement.`);
+      conseils.push(`La conversation « ${top.conversation} » pèse ${Math.round(partTop)} % de la valeur catalogue du projet (${formaterMontant(top.cout, devise)}, ${formaterCompact(top.tokens)} de tokens). Plus une conversation est longue, plus chaque message coûte cher : ouvrez une conversation par tâche et notez l'état d'avancement dans un fichier (CLAUDE.md ou notes) pour repartir proprement.`);
     }
     if (cr.total > 0 && p.part >= 30) {
-      conseils.push(`Ce projet représente ${Math.round(p.part)} % du coût estimé total : fixez-lui une limite de tokens dans Alertes et gardez un modèle plus léger pour les tâches courantes.`);
+      conseils.push(`Ce projet représente ${Math.round(p.part)} % de la valeur catalogue totale : fixez-lui une limite de tokens dans Alertes et gardez un modèle plus léger pour les tâches courantes.`);
     }
     if (p.sessions >= 5) {
       conseils.push(`${p.sessions} conversations : regroupez celles qui portent sur la même tâche, car chaque nouvelle conversation recharge son contexte.`);

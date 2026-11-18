@@ -128,7 +128,6 @@ function rendreApercu() {
   if (dir) {
     cartes.push(kpi("Projets actifs", formaterNombre(r.projetsActifs), "avec un usage ce mois"));
     cartes.push(kpi("Tokens API", aApi ? formaterCompact(r.tokens) : "—", aApi ? `${formaterNombre(r.tokens)} tokens` : "aucun usage saisi"));
-    cartes.push(kpi("Coût API déclaré", r.coutApi !== null ? formaterMontant(r.coutApi, c.devise) : "—", r.coutApi !== null ? "somme des coûts renseignés" : "aucun coût renseigné"));
   } else {
     cartes.push(kpi("Mes tokens API", aApi ? formaterNombre(r.tokens) : "—", aApi ? "ce mois" : "aucun usage saisi"));
   }
@@ -165,7 +164,7 @@ function rendreBilan(c) {
   const pct = b.part === null ? 0 : Math.min(100, b.part);
   $("bilan").innerHTML = `<div class="kpi">${[
     kpi("Tokens consommés", formaterCompact(b.tokens), `${formaterNombre(b.tokens)} tokens`),
-    kpi("Valeur au tarif des tokens", formaterMontant(b.coutEstime, c.devise), "estimation de la plateforme"),
+    kpi("Valeur au tarif catalogue", formaterMontant(b.coutEstime, c.devise), "calculée par la plateforme, non facturée"),
     kpi("Réellement dépensé", formaterMontant(b.depense, c.devise), b.part === null ? "" : `${b.part.toFixed(1).replace(".", ",")} % de cette valeur`),
     kpi("Coût réel par million de tokens", b.parMillion === null ? "—" : `${new Intl.NumberFormat("fr-FR", { maximumFractionDigits: b.parMillion < 1 ? 4 : 2 }).format(b.parMillion)} ${c.devise}`, "dépenses ÷ tokens"),
   ].join("")}</div>
@@ -231,7 +230,7 @@ function rendreUtilisateurs() {
         <td data-label="Utilisateur">${esc(u.nom)}</td>
         <td data-label="Tokens API">${u.tokens ? formaterNombre(u.tokens) : "—"}</td>
         <td data-label="Quota abonnement">${u.quota ? formaterNombre(u.quota) : "—"}</td>
-        <td data-label="Coût API déclaré">${u.cout !== null ? formaterMontant(u.cout, c.devise) : "Non déclaré"}</td>
+        <td data-label="Coût API (catalogue ou déclaré)">${u.cout !== null ? formaterMontant(u.cout, c.devise) : "Non déclaré"}</td>
         <td data-label="Lignes">${u.lignes}</td>
         <td data-label="Sources">${u.sources.map(badge).join(" ")}</td></tr>`).join("")
     : vide(6, "Aucun usage ce mois. Saisissez-le ci-dessous ou importez un CSV.");
@@ -253,7 +252,7 @@ function rendreUtilisateurs() {
 }
 
 const METRIQUES = {
-  cout: { titre: "Coût par projet", valeur: (p, devise) => formaterMontant(p.cout, devise), mesure: (p) => p.cout },
+  cout: { titre: "Valeur au tarif catalogue par projet", valeur: (p, devise) => formaterMontant(p.cout, devise), mesure: (p) => p.cout },
   tokens: { titre: "Tokens par projet", valeur: (p) => formaterNombre(p.tokens), mesure: (p) => p.tokens },
   sessions: { titre: "Sessions par projet", valeur: (p) => String(p.sessions), mesure: (p) => p.sessions },
 };
@@ -267,7 +266,7 @@ function rendreProjets() {
   const m = METRIQUES[tri] || METRIQUES.cout;
   const r = creditsParProjet(usagesApi($("p-periode").value), tri);
   $("kpi-projets").innerHTML = [
-    kpi("Coût estimé", formaterMontant(r.total, c.devise), `${r.projets.length} projets`),
+    kpi("Valeur au tarif catalogue", formaterMontant(r.total, c.devise), `${r.projets.length} projets · non facturée`),
     kpi("Tokens", formaterNombre(r.tokens), "entrée, sortie et cache"),
     kpi("Sessions", String(r.sessions), "conversations avec usage"),
   ].join("");
@@ -279,7 +278,7 @@ function rendreProjets() {
   $("t-projets").innerHTML = r.projets.length
     ? r.projets.map((p) => `<tr>
         <td data-label="Projet">${esc(p.nom)}</td>
-        <td data-label="Coût">${esc(formaterMontant(p.cout, c.devise))}</td>
+        <td data-label="Valeur catalogue">${esc(formaterMontant(p.cout, c.devise))}</td>
         <td data-label="Part">${esc(p.part.toFixed(1))} %</td>
         <td data-label="Tokens">${esc(formaterNombre(p.tokens))}</td>
         <td data-label="Sessions">${p.sessions}</td>
@@ -310,7 +309,7 @@ function rendreConversations() {
         <td data-label="Conversation">${esc(x.conversation)}</td>
         <td data-label="Projet">${esc(x.projet)}</td>
         <td data-label="Tokens">${esc(formaterNombre(x.tokens))}</td>
-        <td data-label="Coût">${esc(formaterMontant(x.cout, c.devise))}</td>
+        <td data-label="Valeur catalogue">${esc(formaterMontant(x.cout, c.devise))}</td>
         <td data-label="Dernière activité">${esc(x.date)}${x.cumul ? " · total cumulé" : ""}</td></tr>`).join("")
     : vide(5, "Aucune conversation ne correspond à ces filtres.");
 }

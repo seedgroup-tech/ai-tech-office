@@ -50,7 +50,7 @@ les onglets Dépenses et Alertes ; un test d'écriture de Direction depuis un co
 - Les saisies sont partagées : elles sont stockées dans la base D1 et relues depuis le serveur.
 - Chaque ligne porte sa source : **réel**, **importé**, **saisi** ou **estimé**. Rien n'est récupéré automatiquement :
   aucune source officielle d'usage IA n'est connectée.
-- Les dépenses (abonnements, crédits) et les coûts d'usage API sont séparés ; les quotas d'abonnement ne sont pas des tokens.
+- Les dépenses (abonnements, crédits) et les coûts d'usage API sont séparés : les coûts de sessions sont une valeur calculée au tarif catalogue des tokens, jamais une facture ; les quotas d'abonnement ne sont pas des tokens.
 - La devise est unique, USD par défaut, modifiable par la Direction dans les seuils.
 - Les données saisies dans l'ancien MVP (stockage du navigateur) ne sont pas reprises.
 
