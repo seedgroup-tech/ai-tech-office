@@ -1,13 +1,13 @@
 // AI CONTROL (M-013) : page partagée. Les données viennent de l'API (/api), jamais du navigateur.
 // Les droits sont appliqués par le serveur ; ce script ne fait que masquer ce qui ne sert pas au rôle.
 import {
-  etatInitial, moisCourant, resumeMois, alertes, agreger, depensesDuMois, usagesDuMois,
+  etatInitial, moisCourant, resumeMois, alertes, agreger, creditsParProjet, depensesDuMois, usagesDuMois,
   depensesParMois, importerDepenses, importerUsages, formaterMontant, formaterNombre,
   dateValide, parJour, projeterMois, SOURCES, TYPES, NATURES,
 } from "./logique.mjs";
 
-const VUES = ["apercu", "utilisateurs", "projets", "depenses", "alertes"];
-const VUES_DIRECTION = ["depenses", "alertes"];
+const VUES = ["apercu", "utilisateurs", "projets", "credits", "depenses", "alertes"];
+const VUES_DIRECTION = ["credits", "depenses", "alertes"];
 const $ = (id) => document.getElementById(id);
 
 let etat = etatInitial();
@@ -238,6 +238,29 @@ function rendreProjets() {
   $("dl-projets").innerHTML = [...new Set(etat.usages.map((u) => u.projet))].sort().map((v) => `<option value="${esc(v)}">`).join("");
 }
 
+function rendreCredits() {
+  const c = etat.config;
+  const r = creditsParProjet(etat.usages);
+  $("kpi-credits").innerHTML = [
+    kpi("Coût total des sessions", formaterMontant(r.total, c.devise), `${r.sessions} sessions`),
+    kpi("Projets", String(r.projets.length), "avec au moins une session"),
+    kpi("Tokens", formaterNombre(r.tokens), "entrée, sortie et cache"),
+  ].join("");
+  const max = Math.max(1, ...r.projets.map((p) => p.cout));
+  $("graph-credits").innerHTML = r.projets.length
+    ? r.projets.map((p) => `<div class="ligne-barre"><span>${esc(p.nom)}</span>${barre((p.cout / max) * 100)}<b>${esc(formaterMontant(p.cout, c.devise))}</b></div>`).join("")
+    : `<p class="aide">Aucune session enregistrée.</p>`;
+  $("t-credits").innerHTML = r.projets.length
+    ? r.projets.map((p) => `<tr>
+        <td data-label="Projet">${esc(p.nom)}</td>
+        <td data-label="Coût">${esc(formaterMontant(p.cout, c.devise))}</td>
+        <td data-label="Part">${esc(p.part.toFixed(1))} %</td>
+        <td data-label="Tokens">${esc(formaterNombre(p.tokens))}</td>
+        <td data-label="Sessions">${p.sessions}</td>
+        <td data-label="Dernière activité">${esc(p.derniere)}</td></tr>`).join("")
+    : vide(6, "Aucune session enregistrée.");
+}
+
 function rendreDepenses() {
   const c = etat.config;
   const liste = [...etat.depenses].sort((a, b) => b.date.localeCompare(a.date));
@@ -277,6 +300,7 @@ function rendre() {
   rendreUtilisateurs();
   rendreProjets();
   if (estDirection()) {
+    rendreCredits();
     rendreDepenses();
     rendreAlertes();
   }

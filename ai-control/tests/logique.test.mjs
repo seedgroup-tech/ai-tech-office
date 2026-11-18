@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   etatInitial, normaliser, lireEtat, lireCsv, parseNombre, parseDate,
-  importerDepenses, importerUsages, resumeMois, alertes, agreger, moisPrecedents, parJour, projeterMois,
+  importerDepenses, importerUsages, resumeMois, alertes, agreger, creditsParProjet, moisPrecedents, parJour, projeterMois,
 } from "../public/logique.mjs";
 
 function etatAvec({ budget = 0, depenses = [], usages = [], config = {} } = {}) {
@@ -131,4 +131,26 @@ test("projection de fin de mois : seulement pour le mois en cours", () => {
   assert.equal(projeterMois(10000, "2026-11", "2026-11-10"), 30000);
   assert.equal(projeterMois(10000, "2026-10", "2026-11-10"), null);
   assert.equal(projeterMois(0, "2026-11", "2026-11-01"), 0);
+});
+
+test("crédits de sessions : coût, tokens, sessions et part par projet, tous mois confondus", () => {
+  const r = creditsParProjet([
+    use("2026-10-01", "equipe", 1000, { projet: "A", cout: 30 }),
+    use("2026-11-05", "equipe", 500, { projet: "A", cout: 10 }),
+    use("2026-11-06", "equipe", 200, { projet: "B", cout: 60 }),
+    use("2026-11-06", "equipe", 99, { projet: "B", nature: "abonnement" }),
+  ]);
+  assert.equal(r.total, 100);
+  assert.equal(r.sessions, 3);
+  assert.equal(r.tokens, 1700);
+  assert.deepEqual(r.projets.map((p) => p.nom), ["B", "A"]);
+  assert.equal(r.projets[0].part, 60);
+  assert.equal(r.projets[1].sessions, 2);
+  assert.equal(r.projets[1].derniere, "2026-11-05");
+});
+
+test("crédits de sessions : sans usage, total nul et aucune division par zéro", () => {
+  const r = creditsParProjet([]);
+  assert.equal(r.total, 0);
+  assert.deepEqual(r.projets, []);
 });

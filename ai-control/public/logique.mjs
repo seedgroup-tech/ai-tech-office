@@ -132,6 +132,29 @@ export function agreger(usages, cle) {
     .sort((a, b) => b.tokens - a.tokens || a.nom.localeCompare(b.nom, "fr"));
 }
 
+// Où partent les crédits de sessions : coût et tokens API par projet, sur toute la période
+// (une ligne d'usage API = une session). Les parts sont en pourcentage du coût total.
+export function creditsParProjet(usages) {
+  const par = new Map();
+  for (const u of usages) {
+    if (u.nature !== "api") continue;
+    const e = par.get(u.projet) || { nom: u.projet, cout: 0, tokens: 0, sessions: 0, derniere: "" };
+    e.cout += u.cout || 0;
+    e.tokens += u.valeur;
+    e.sessions += 1;
+    if (u.date > e.derniere) e.derniere = u.date;
+    par.set(u.projet, e);
+  }
+  const liste = [...par.values()].sort((a, b) => b.cout - a.cout || a.nom.localeCompare(b.nom, "fr"));
+  const total = liste.reduce((s, e) => s + e.cout, 0);
+  return {
+    total,
+    tokens: liste.reduce((s, e) => s + e.tokens, 0),
+    sessions: liste.reduce((s, e) => s + e.sessions, 0),
+    projets: liste.map((e) => ({ ...e, part: total > 0 ? (e.cout / total) * 100 : 0 })),
+  };
+}
+
 export function resumeMois(etat, mois) {
   const dep = depensesDuMois(etat, mois);
   const us = usagesDuMois(etat, mois);

@@ -31,6 +31,7 @@
     <a href="#apercu" data-nav="apercu">Aperçu</a>
   <a href="#utilisateurs" data-nav="utilisateurs" id="nav-utilisateurs">Utilisateurs</a>
   <a href="#projets" data-nav="projets">Projets</a>
+  <a href="#credits" data-nav="credits" data-dir>Crédits sessions</a>
   <a href="#depenses" data-nav="depenses" data-dir>Dépenses</a>
   <a href="#alertes" data-nav="alertes" data-dir>Alertes</a>
 </nav>
@@ -142,6 +143,23 @@
     <div class="tete"><h2>Tokens API par projet</h2></div>
     <div id="graph-projets"></div>
   </div>
+</section>
+
+<!-- Crédits de sessions -->
+<section id="vue-credits" hidden data-dir>
+  <div class="tete"><h2>Où partent les crédits de sessions</h2><p>Coût par projet, toutes périodes confondues (une ligne = une session).</p></div>
+  <div class="kpi" id="kpi-credits"></div>
+  <div class="carte">
+    <div class="tete"><h2>Coût par projet</h2></div>
+    <div id="graph-credits"></div>
+  </div>
+  <div class="tableau">
+    <table>
+      <thead><tr><th>Projet</th><th>Coût</th><th>Part</th><th>Tokens</th><th>Sessions</th><th>Dernière activité</th></tr></thead>
+      <tbody id="t-credits"></tbody>
+    </table>
+  </div>
+  <p class="note">Les montants sont ceux que la plateforme calcule pour chaque session au tarif des tokens (source « Estimé »). Ils ne sont pas additionnés aux dépenses du compte. Chaque session est datée de sa dernière activité : le coût d'une session longue n'est pas réparti sur les mois.</p>
 </section>
 
 <!-- Dépenses -->
