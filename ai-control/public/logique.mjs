@@ -178,6 +178,7 @@ export function resumeMois(etat, mois) {
     restant: budget - depense,
     pourcentage: budget > 0 ? (depense / budget) * 100 : null,
     utilisateursActifs: new Set(us.map((u) => u.utilisateur)).size,
+    projetsActifs: new Set(us.filter((u) => u.nature === "api").map((u) => u.projet)).size,
     tokens: somme(us.filter((u) => u.nature === "api"), (u) => u.valeur),
     coutApi: coutsApi.length ? somme(coutsApi, (u) => u.cout) : null,
     provenance: compterSources([...dep, ...us]),
@@ -221,7 +222,70 @@ export function alertes(etat, mois) {
       }
     }
   }
-  return out.sort((a, b) => (a.niveau === b.niveau ? 0 : a.niveau === "critique" ? -1 : 1));
+  const cr = creditsParProjet(api);
+  if (cr.total > 0 && cr.projets.length >= 2 && cr.projets[0].part >= 50) {
+    const top = cr.projets[0];
+    const lignes = api.filter((u) => u.projet === top.nom).sort((a, b) => (b.cout || 0) - (a.cout || 0));
+    const conv = lignes[0] && top.cout > 0 && (lignes[0].cout || 0) / top.cout >= 0.6 ? ` Une seule conversation en est la cause : « ${lignes[0].conversation || "(sans titre)"} ».` : "";
+    out.push({ niveau: "attention", categorie: "Projet", message: `Le projet ${top.nom} concentre ${Math.round(top.part)} % du coût estimé du mois (${formaterMontant(top.cout, c.devise)} sur ${formaterMontant(cr.total, c.devise)}).${conv}` });
+  }
+  if (r.depense > 0 && r.coutApi !== null && r.coutApi > 3 * r.depense) {
+    out.push({ niveau: "info", categorie: "Estimation", message: `Le coût estimé des sessions (${formaterMontant(r.coutApi, c.devise)}) vaut ${Math.round(r.coutApi / r.depense)} fois vos dépenses réelles du mois (${formaterMontant(r.depense, c.devise)}) : c'est une valeur de référence au tarif des tokens, pas une facture.` });
+  }
+  if (r.budget <= 0) {
+    out.push({ niveau: "info", categorie: "Configuration", message: "Aucun budget mensuel défini : les alertes de dépassement sont inactives. Renseignez-le dans Alertes." });
+  }
+  const rang = { critique: 0, attention: 1, info: 2 };
+  return out.sort((a, b) => rang[a.niveau] - rang[b.niveau]);
+}
+
+// Grand nombre lisible : 58 777 512 396 devient « 58,8 milliards ».
+export function formaterCompact(n) {
+  const f = (v, un, pl) => `${(Math.round(v * 10) / 10).toString().replace(".", ",")} ${v < 2 ? un : pl}`;
+  if (Math.abs(n) >= 1e9) return f(n / 1e9, "milliard", "milliards");
+  if (Math.abs(n) >= 1e6) return f(n / 1e6, "million", "millions");
+  return formaterNombre(n);
+}
+
+// Tokens du mois, ce qu'ils valent au tarif des tokens, et ce qui a réellement été dépensé.
+export function bilanTokens(etat, mois) {
+  const r = resumeMois(etat, mois);
+  const coutEstime = r.coutApi || 0;
+  return {
+    tokens: r.tokens,
+    coutEstime,
+    depense: r.depense,
+    part: coutEstime > 0 ? (r.depense / coutEstime) * 100 : null,
+    parMillion: r.tokens > 0 ? r.depense / (r.tokens / 1e6) : null,
+  };
+}
+
+const TITRE_GENERIQUE = /^(chat session|new session|pm|op|\(sans titre\))$/i;
+
+// Bonnes pratiques pour réduire la consommation, projet par projet, d'après les usages API.
+export function conseilsParProjet(usages, devise = "USD", max = 8) {
+  const api = usages.filter((u) => u.nature === "api");
+  const cr = creditsParProjet(api);
+  return cr.projets.slice(0, max).map((p) => {
+    const lignes = api.filter((u) => u.projet === p.nom).sort((a, b) => (b.cout || 0) - (a.cout || 0));
+    const top = lignes[0];
+    const partTop = p.cout > 0 ? ((top.cout || 0) / p.cout) * 100 : 0;
+    const conseils = [];
+    if ((top.cout || 0) >= 100 && partTop >= 50) {
+      conseils.push(`La conversation « ${top.conversation || "(sans titre)"} » pèse ${Math.round(partTop)} % du coût du projet (${formaterMontant(top.cout, devise)}, ${formaterCompact(top.valeur)} de tokens). Plus une conversation est longue, plus chaque message coûte cher : ouvrez une conversation par tâche et notez l'état d'avancement dans un fichier (CLAUDE.md ou notes) pour repartir proprement.`);
+    }
+    if (cr.total > 0 && p.part >= 30) {
+      conseils.push(`Ce projet représente ${Math.round(p.part)} % du coût estimé total : fixez-lui une limite de tokens dans Alertes et gardez un modèle plus léger pour les tâches courantes.`);
+    }
+    if (p.sessions >= 5) {
+      conseils.push(`${p.sessions} conversations : regroupez celles qui portent sur la même tâche, car chaque nouvelle conversation recharge son contexte.`);
+    }
+    if (lignes.some((u) => TITRE_GENERIQUE.test(u.conversation || "(sans titre)"))) {
+      conseils.push("Certaines conversations n'ont pas de titre parlant (« Chat session », « New session »…) : nommez-les par tâche pour retrouver ce qui coûte.");
+    }
+    if (!conseils.length) conseils.push("Rien d'anormal : continuez avec une conversation par tâche.");
+    return { projet: p.nom, cout: p.cout, part: p.part, sessions: p.sessions, conseils };
+  });
 }
 
 // Deux décimales au plus : un coût API de quelques centimes ne doit pas s'arrondir à zéro.

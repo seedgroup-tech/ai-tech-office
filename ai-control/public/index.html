@@ -43,6 +43,10 @@
 <!-- Aperçu -->
 <section id="vue-apercu">
   <div class="kpi" id="kpi"></div>
+  <div class="carte" data-dir>
+    <div class="tete"><h2>Tokens consommés et dépensé</h2><p>Mois sélectionné</p></div>
+    <div id="bilan"></div>
+  </div>
   <div class="carte" data-collab>
     <div class="tete"><h2>Ma consommation</h2><p id="mon-total"></p></div>
     <div id="mon-suivi"></div>
@@ -63,8 +67,12 @@
     </div>
   </div>
   <div class="carte" data-dir>
-    <div class="tete"><h2>Tokens API par utilisateur</h2><p>Mois sélectionné</p></div>
-    <div id="graph-users"></div>
+    <div class="tete"><h2>Tokens API par projet</h2><p>Mois sélectionné</p></div>
+    <div id="graph-projets-apercu"></div>
+  </div>
+  <div class="carte" data-dir>
+    <div class="tete"><h2>Bonnes pratiques par projet</h2><p>D'après toutes les conversations enregistrées</p></div>
+    <div id="bonnes-pratiques"></div>
   </div>
   <div class="carte" data-collab>
     <div class="tete"><h2>Conseils pour mieux utiliser l'IA</h2></div>

@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   etatInitial, normaliser, lireEtat, lireCsv, parseNombre, parseDate,
-  importerDepenses, importerUsages, resumeMois, alertes, agreger, creditsParProjet, listerConversations, moisPrecedents, parJour, projeterMois,
+  importerDepenses, importerUsages, resumeMois, alertes, agreger, creditsParProjet, listerConversations, bilanTokens, conseilsParProjet, formaterCompact, formaterNombre, moisPrecedents, parJour, projeterMois,
 } from "../public/logique.mjs";
 
 function etatAvec({ budget = 0, depenses = [], usages = [], config = {} } = {}) {
@@ -181,4 +181,62 @@ test("conversations : filtre par projet et par seuils, tri, titre manquant", () 
   assert.deepEqual(listerConversations(u, { projet: "A" }).map((x) => x.conversation), ["Beta", "Alpha"]);
   assert.deepEqual(listerConversations(u, { tokensMin: 400 }).map((x) => x.conversation), ["(sans titre)", "Alpha"]);
   assert.deepEqual(listerConversations(u, { coutMin: 30 }).map((x) => x.conversation), ["Beta"]);
+});
+
+test("résumé du mois : nombre de projets actifs", () => {
+  const e = etatAvec({ usages: [use("2026-11-02", "e", 10, { projet: "A" }), use("2026-11-03", "e", 10, { projet: "A" }), use("2026-11-04", "e", 10, { projet: "B" }), use("2026-10-04", "e", 10, { projet: "C" })] });
+  assert.equal(resumeMois(e, "2026-11").projetsActifs, 2);
+});
+
+test("grands nombres lisibles", () => {
+  assert.equal(formaterCompact(58777512396), "58,8 milliards");
+  assert.equal(formaterCompact(1000000000), "1 milliard");
+  assert.equal(formaterCompact(2500000), "2,5 millions");
+  assert.equal(formaterCompact(1234), formaterNombre(1234));
+});
+
+test("bilan : tokens du mois, valeur estimée, dépensé réellement et coût par million", () => {
+  const e = etatAvec({
+    depenses: [dep("2026-11-05", 300)],
+    usages: [use("2026-11-02", "e", 2000000000, { cout: 1000 }), use("2026-10-02", "e", 5, { cout: 9 })],
+  });
+  const b = bilanTokens(e, "2026-11");
+  assert.equal(b.tokens, 2000000000);
+  assert.equal(b.coutEstime, 1000);
+  assert.equal(b.depense, 300);
+  assert.equal(b.part, 30);
+  assert.equal(b.parMillion, 0.15);
+  assert.equal(bilanTokens(etatAvec(), "2026-11").part, null);
+});
+
+test("alertes : concentration sur un projet, écart avec les dépenses réelles et budget non défini", () => {
+  const e = etatAvec({
+    depenses: [dep("2026-11-05", 100)],
+    usages: [
+      { ...use("2026-11-02", "e", 900, { projet: "Gros", cout: 900 }), conversation: "Session géante" },
+      use("2026-11-03", "e", 10, { projet: "Petit", cout: 50 }),
+    ],
+  });
+  const al = alertes(e, "2026-11");
+  assert.deepEqual(al.map((a) => a.categorie), ["Projet", "Estimation", "Configuration"]);
+  assert.match(al[0].message, /Gros concentre 95 %/);
+  assert.match(al[0].message, /Session géante/);
+  assert.equal(al[1].niveau, "info");
+  assert.equal(alertes(etatAvec({ budget: 1000, depenses: [dep("2026-11-05", 10)] }), "2026-11").length, 0);
+});
+
+test("bonnes pratiques par projet : conversation dominante, poids du projet, titres sans nom", () => {
+  const u = [
+    { ...use("2026-10-01", "e", 5000, { projet: "A", cout: 900 }), conversation: "Chat session" },
+    { ...use("2026-10-02", "e", 50, { projet: "A", cout: 10 }), conversation: "Petite" },
+    { ...use("2026-10-03", "e", 10, { projet: "B", cout: 1 }), conversation: "Courte" },
+  ];
+  const r = conseilsParProjet(u);
+  assert.deepEqual(r.map((p) => p.projet), ["A", "B"]);
+  assert.equal(r[0].conseils.length, 3);
+  assert.match(r[0].conseils[0], /Chat session/);
+  assert.match(r[0].conseils[1], /fixez-lui une limite/);
+  assert.match(r[0].conseils[2], /titre parlant/);
+  assert.deepEqual(r[1].conseils, ["Rien d'anormal : continuez avec une conversation par tâche."]);
+  assert.deepEqual(conseilsParProjet([]), []);
 });

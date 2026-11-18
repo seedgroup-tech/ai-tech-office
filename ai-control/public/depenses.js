@@ -1,7 +1,7 @@
 // AI CONTROL (M-013) : page partagée. Les données viennent de l'API (/api), jamais du navigateur.
 // Les droits sont appliqués par le serveur ; ce script ne fait que masquer ce qui ne sert pas au rôle.
 import {
-  etatInitial, moisCourant, resumeMois, alertes, agreger, creditsParProjet, listerConversations, depensesDuMois, usagesDuMois,
+  etatInitial, moisCourant, resumeMois, alertes, agreger, creditsParProjet, listerConversations, bilanTokens, conseilsParProjet, formaterCompact, depensesDuMois, usagesDuMois,
   depensesParMois, importerDepenses, importerUsages, formaterMontant, formaterNombre,
   dateValide, parJour, projeterMois, SOURCES, TYPES, NATURES,
 } from "./logique.mjs";
@@ -126,8 +126,8 @@ function rendreApercu() {
     kpi("Restant", r.budget > 0 ? formaterMontant(r.restant, c.devise) : "—", depassement ? "dépassement" : "disponible", depassement ? "critique" : ""),
   ];
   if (dir) {
-    cartes.push(kpi("Utilisateurs actifs", formaterNombre(r.utilisateursActifs), "avec un usage ce mois"));
-    cartes.push(kpi("Tokens API", aApi ? formaterNombre(r.tokens) : "—", aApi ? "tous collaborateurs" : "aucun usage saisi"));
+    cartes.push(kpi("Projets actifs", formaterNombre(r.projetsActifs), "avec un usage ce mois"));
+    cartes.push(kpi("Tokens API", aApi ? formaterCompact(r.tokens) : "—", aApi ? `${formaterNombre(r.tokens)} tokens` : "aucun usage saisi"));
     cartes.push(kpi("Coût API déclaré", r.coutApi !== null ? formaterMontant(r.coutApi, c.devise) : "—", r.coutApi !== null ? "somme des coûts renseignés" : "aucun coût renseigné"));
   } else {
     cartes.push(kpi("Mes tokens API", aApi ? formaterNombre(r.tokens) : "—", aApi ? "ce mois" : "aucun usage saisi"));
@@ -150,11 +150,42 @@ function rendreApercu() {
 
   if (dir) {
     $("graph-mois").innerHTML = svgMois(depensesParMois(etat, mois, 6), c.devise);
-    const users = agreger(usagesDuMois(etat, mois).filter((u) => u.nature === "api"), "utilisateur").slice(0, 8);
-    $("graph-users").innerHTML = users.length ? lignesBarres(users) : `<p class="aide">Aucun usage API ce mois.</p>`;
+    const projets = creditsParProjet(usagesDuMois(etat, mois).filter((u) => u.nature === "api"), "tokens").projets.slice(0, 8);
+    $("graph-projets-apercu").innerHTML = projets.length ? lignesBarres(projets) : `<p class="aide">Aucun usage API ce mois.</p>`;
+    rendreBilan(c);
+    rendreBonnesPratiques(c);
   } else {
     rendreMonSuivi();
   }
+}
+
+function rendreBilan(c) {
+  const b = bilanTokens(etat, mois);
+  if (!b.tokens) { $("bilan").innerHTML = `<p class="aide">Aucun usage API ce mois.</p>`; return; }
+  const pct = b.part === null ? 0 : Math.min(100, b.part);
+  $("bilan").innerHTML = `<div class="kpi">${[
+    kpi("Tokens consommés", formaterCompact(b.tokens), `${formaterNombre(b.tokens)} tokens`),
+    kpi("Valeur au tarif des tokens", formaterMontant(b.coutEstime, c.devise), "estimation de la plateforme"),
+    kpi("Réellement dépensé", formaterMontant(b.depense, c.devise), b.part === null ? "" : `${b.part.toFixed(1).replace(".", ",")} % de cette valeur`),
+    kpi("Coût réel par million de tokens", b.parMillion === null ? "—" : formaterMontant(b.parMillion, c.devise), "dépenses ÷ tokens"),
+  ].join("")}</div>
+    <div class="budget-ligne"><span>Dépensé sur la valeur des tokens</span><span>${b.part === null ? "—" : esc(b.part.toFixed(1).replace(".", ",")) + " %"}</span></div>${barre(pct)}`;
+}
+
+const CONSEILS_GENERAUX = [
+  "Une conversation par tâche : quand une étape est terminée, résumez l'état dans un fichier (CLAUDE.md ou notes) et repartez d'une conversation neuve.",
+  "Dans une conversation longue, compactez (/compact) ou videz (/clear) régulièrement : chaque message renvoie tout l'historique.",
+  "Réservez le modèle le plus puissant aux tâches difficiles ; un modèle plus léger suffit pour les corrections et les tâches répétitives.",
+  "Regroupez vos demandes en un seul message plutôt que de multiplier les petites demandes.",
+  "Donnez un titre clair à chaque conversation et rattachez-la à son projet : c'est ce qui permet de voir ici ce qui coûte.",
+];
+
+function rendreBonnesPratiques(c) {
+  const projets = conseilsParProjet(etat.usages, c.devise);
+  $("bonnes-pratiques").innerHTML = `<ul class="conseils">${CONSEILS_GENERAUX.map((t) => `<li>${esc(t)}</li>`).join("")}</ul>`
+    + (projets.length
+      ? projets.map((p) => `<div class="bp"><h3>${esc(p.projet)} <small>${esc(formaterMontant(p.cout, c.devise))} · ${esc(p.part.toFixed(1).replace(".", ","))} % · ${p.sessions} conversation(s)</small></h3><ul class="conseils">${p.conseils.map((t) => `<li>${esc(t)}</li>`).join("")}</ul></div>`).join("")
+      : `<p class="aide">Aucune conversation enregistrée.</p>`);
 }
 
 function rendreMonSuivi() {

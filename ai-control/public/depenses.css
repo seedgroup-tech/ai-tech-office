@@ -53,6 +53,10 @@ svg .bar{fill:var(--bleu);opacity:.9}
 svg .axe{fill:var(--gris);font:500 12px Inter,Arial,sans-serif}
 .alerte{font-size:14px;padding:10px 12px;border-radius:10px;border-left:3px solid var(--attente);background:var(--doux);margin-top:8px;overflow-wrap:anywhere}
 .alerte.critique{border-left-color:var(--critique)}
+.alerte.info{border-left-color:var(--bleu)}
+.bp{margin-top:16px;padding-top:12px;border-top:1px solid var(--ligne)}
+.bp h3{margin:0 0 4px;font-size:16px}
+.bp small{font-weight:500;color:var(--gris);font-size:13px;margin-left:6px}
 .alerte b{color:var(--fort);margin-right:4px}
 .tableau{overflow-x:auto;background:var(--carte);border:1px solid var(--ligne);border-radius:14px;margin-top:6px}
 table{border-collapse:collapse;width:100%;font-size:14.5px}
