@@ -11,8 +11,21 @@ Cette procédure est destinée à un agent chargé de mettre AI CONTROL en ligne
 | `DIRECTION` | adresses Direction / Finance, séparées par des virgules |
 | `COLLABORATEURS` | adresses collaborateurs, séparées par des virgules |
 | `ACCESS_TEAM_DOMAIN`, `ACCESS_AUD` | valeurs de l'équipe Access |
+| `GITHUB_TOKEN` | jeton fin-grain sur `seedgroup-tech/ai-tech-office` (voir le guide du propriétaire) |
 
-Vérifier le jeton avant tout : `curl -s -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" https://api.cloudflare.com/client/v4/user/tokens/verify` → doit répondre `"status":"active"`. Sinon, arrêter et signaler.
+Vérifier les jetons avant tout :
+- Cloudflare : `curl -s -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" https://api.cloudflare.com/client/v4/user/tokens/verify` → doit répondre `"status":"active"`.
+- GitHub : `curl -s -o /dev/null -w "%{http_code}" -H "Authorization: Bearer $GITHUB_TOKEN" https://api.github.com/repos/seedgroup-tech/ai-tech-office` → doit répondre `200`.
+
+Si un jeton est refusé, expiré ou trop large : arrêter et signaler. Dates d'expiration à surveiller : un an après leur création (Cloudflare : 18 novembre 2027 ; GitHub : à noter lors de la création).
+
+## Garde-fous
+
+- **Ne jamais pousser ni fusionner dans `main`.** La protection de `main` (PR avec approbation, pas de force-push, pas de suppression) est fixée par le propriétaire ; ne pas la modifier.
+- **Sauvegarde avant toute migration** : `npx wrangler d1 export ai-control --remote --output=../sauvegarde-ai-control-AAAA-MM-JJ.sql`. Ce fichier reste **hors du dépôt**, il contient des données financières.
+- **Migration une seule fois** : avant la section 1 étape 2, lister les tables (étape 3). Si `depenses`, `usages` et `config` existent déjà, ne pas rejouer le fichier SQL.
+- **Rotation des jetons** : signaler au propriétaire quinze jours avant l'expiration ; ne jamais recréer un jeton soi-même.
+- **Aucun secret** dans les fichiers du dépôt, les messages de commit, les journaux ou les réponses.
 
 ## 1. Base D1
 
