@@ -5,3 +5,10 @@
 name = "ai-control"
 pages_build_output_dir = "public"
 compatibility_date = "2026-11-01"
+
+# Base D1 (identifiant non secret) : la liaison du tableau de bord est ignorée
+# quand ce fichier existe, elle doit donc être déclarée ici.
+[[d1_databases]]
+binding = "DB"
+database_name = "ai-control"
+database_id = "e1e2aa80-a17b-4a1b-92d1-3229bda0238d"
