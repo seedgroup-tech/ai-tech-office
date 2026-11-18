@@ -275,7 +275,7 @@ const montantReel = (v, c) => (estDirection() ? formaterMontant(v, c.devise) : "
 function messageVide(periode) {
   return periode === "cumul"
     ? "Aucun usage API enregistré."
-    : `Aucun relevé sur cette période : les relevés hebdomadaires ont démarré le 18 novembre 2026 (un chaque lundi, le premier le 23 novembre). <button type="button" class="petit" data-voir-cumul>Voir le cumul à ce jour</button>`;
+    : `Aucun relevé sur cette période : les relevés quotidiens ont démarré le 18 novembre 2026 (un chaque soir). <button type="button" class="petit" data-voir-cumul>Voir le cumul à ce jour</button>`;
 }
 
 function majPlage(prefixe, periode) {
