@@ -41,7 +41,7 @@ Si l'accès est refusé ou expiré : arrêter et signaler. Expiration du jeton C
 
 1. Créer le projet `ai-control` (tableau de bord, ou `npx wrangler pages project create ai-control`).
 2. Réglages de build : **Root directory** `ai-control`, build vide, sortie `public`. Branche : `agent/M-013-ai-control-partage` (ou la branche validée par le propriétaire).
-3. Lier la base : binding D1 nom `DB` → `ai-control`. Ne pas modifier `wrangler.toml` pour cela.
+3. Lier la base : la liaison D1 `DB` → `ai-control` est **déclarée dans `wrangler.toml`** (bloc `[[d1_databases]]`, l'identifiant de la base n'est pas secret). Ne pas la poser dans le tableau de bord ni par l'API : tant que `wrangler.toml` contient `pages_build_output_dir`, il fait autorité et Cloudflare efface toute liaison posée ailleurs à chaque déploiement (l'API répond alors « Base de données non liée au projet »). Si la base est recréée, mettre à jour `database_id` dans `wrangler.toml`.
 4. Déployer la branche (envoi direct du dossier `public` avec les Functions, ou build depuis GitHub). Ne pas fusionner dans `main`.
 
 ## 3. Lien secret
@@ -58,6 +58,7 @@ Si l'accès est refusé ou expiré : arrêter et signaler. Expiration du jeton C
 - Création d'une dépense de test, visible après rechargement, puis supprimée.
 - Mauvaise clé : 403.
 - Devise par défaut : USD.
+- `/api/donnees` (avec le lien) répond sans erreur « Base de données non liée ».
 
 ## Points d'arrêt (ne pas contourner)
 
