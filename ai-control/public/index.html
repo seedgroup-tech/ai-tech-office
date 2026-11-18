@@ -3,9 +3,9 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Contrôle des dépenses IA · AI TECH OFFICE</title>
+<title>AI CONTROL · dépenses IA SeedScaleUp</title>
 <meta name="referrer" content="no-referrer">
-<link rel="icon" href="../icone.svg" type="image/svg+xml">
+
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@600;700;800&family=Inter:wght@400;500;600&display=swap">
@@ -16,9 +16,10 @@
 <header class="haut">
   <div>
     <a class="retour" href="../">← Console du bureau</a>
-    <div class="marque">SEED Group · AI CONTROL (M-012)</div>
+    <div class="marque">SeedScaleUp · AI CONTROL</div>
     <h1>Dépenses et usage de l'IA</h1>
-    <p>Suivi des dépenses, des utilisateurs et des projets. Aucune source officielle n'est connectée : les données sont saisies ou importées, et chacune porte sa source.</p>
+    <p>Données partagées entre les personnes autorisées. Aucune source officielle n'est connectée : les données sont saisies ou importées, et chacune porte sa source.</p>
+    <p class="qui" id="qui" role="status"></p>
   </div>
   <div class="mois-bloc">
     <label for="mois">Mois</label>
@@ -27,11 +28,11 @@
 </header>
 
 <nav class="vues" aria-label="Vues">
-  <a href="#apercu" data-nav="apercu">Aperçu</a>
-  <a href="#utilisateurs" data-nav="utilisateurs">Utilisateurs</a>
+    <a href="#apercu" data-nav="apercu">Aperçu</a>
+  <a href="#utilisateurs" data-nav="utilisateurs" id="nav-utilisateurs">Utilisateurs</a>
   <a href="#projets" data-nav="projets">Projets</a>
-  <a href="#depenses" data-nav="depenses">Dépenses</a>
-  <a href="#alertes" data-nav="alertes">Alertes</a>
+  <a href="#depenses" data-nav="depenses" data-dir>Dépenses</a>
+  <a href="#alertes" data-nav="alertes" data-dir>Alertes</a>
 </nav>
 
 <p class="msg" id="msg" role="status" aria-live="polite"></p>
@@ -41,30 +42,44 @@
 <!-- Aperçu -->
 <section id="vue-apercu">
   <div class="kpi" id="kpi"></div>
+  <div class="carte" data-collab>
+    <div class="tete"><h2>Ma consommation</h2><p id="mon-total"></p></div>
+    <div id="mon-suivi"></div>
+  </div>
   <div class="carte">
     <div class="tete"><h2>Budget du mois</h2><p id="prov"></p></div>
     <div id="budget"></div>
+    <p class="aide" id="projection" data-dir></p>
   </div>
   <div class="cols">
-    <div class="carte">
+    <div class="carte" data-dir>
       <div class="tete"><h2>Dépenses sur 6 mois</h2></div>
       <div id="graph-mois"></div>
     </div>
     <div class="carte">
-      <div class="tete"><h2>Alertes</h2><a href="#alertes">Gérer les seuils</a></div>
+      <div class="tete"><h2>Alertes</h2><a href="#alertes" data-dir>Gérer les seuils</a></div>
       <div id="alertes-resume"></div>
     </div>
   </div>
-  <div class="carte">
+  <div class="carte" data-dir>
     <div class="tete"><h2>Tokens API par utilisateur</h2><p>Mois sélectionné</p></div>
     <div id="graph-users"></div>
+  </div>
+  <div class="carte" data-collab>
+    <div class="tete"><h2>Conseils pour mieux utiliser l'IA</h2></div>
+    <ul class="conseils">
+      <li>Gardez les longues tâches pour un modèle puissant, et utilisez un modèle plus léger pour les tâches simples.</li>
+      <li>Regroupez vos questions en une seule demande plutôt que plusieurs petites demandes.</li>
+      <li>Réutilisez une conversation existante quand elle porte déjà le bon contexte, au lieu de tout recoller.</li>
+      <li>Rattachez chaque usage à son projet : cela permet de répartir les coûts justement.</li>
+    </ul>
   </div>
   <p class="note">Les abonnements et crédits sont des dépenses. Les coûts d'usage API sont déclarés à part et ne sont jamais additionnés aux dépenses, pour éviter les doublons.</p>
 </section>
 
 <!-- Utilisateurs -->
 <section id="vue-utilisateurs" hidden>
-  <div class="tete"><h2>Utilisateurs</h2><p>Tokens API et quotas d'abonnement du mois.</p></div>
+  <div class="tete"><h2 id="titre-utilisateurs">Utilisateurs</h2><p>Tokens API et quotas d'abonnement du mois.</p></div>
   <div class="tableau">
     <table>
       <thead><tr><th>Utilisateur</th><th>Tokens API</th><th>Quota abonnement</th><th>Coût API déclaré</th><th>Lignes</th><th>Sources</th></tr></thead>
@@ -130,7 +145,7 @@
 </section>
 
 <!-- Dépenses -->
-<section id="vue-depenses" hidden>
+<section id="vue-depenses" hidden data-dir>
   <div class="tete"><h2>Dépenses</h2><p id="total-mois"></p></div>
   <div class="tableau">
     <table>
@@ -176,7 +191,7 @@
 </section>
 
 <!-- Alertes -->
-<section id="vue-alertes" hidden>
+<section id="vue-alertes" hidden data-dir>
   <div class="cols">
     <div class="carte">
       <h3>Seuils et limites</h3>

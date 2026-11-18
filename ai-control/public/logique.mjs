@@ -51,12 +51,12 @@ export function dateValide(s) {
   return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === s;
 }
 
-function valideDepense(d) {
+export function valideDepense(d) {
   return d && dateValide(d.date) && TYPES[d.type] && SOURCES[d.source]
     && typeof d.montant === "number" && Number.isFinite(d.montant) && d.montant >= 0 && typeof d.libelle === "string";
 }
 
-function valideUsage(u) {
+export function valideUsage(u) {
   return u && dateValide(u.date) && NATURES[u.nature] && SOURCES[u.source]
     && typeof u.utilisateur === "string" && typeof u.projet === "string"
     && typeof u.valeur === "number" && Number.isFinite(u.valeur) && u.valeur >= 0
@@ -323,4 +323,29 @@ export function importerUsages(texte) {
     else ajouts.push({ id: nouvelId(), date, utilisateur: l.utilisateur, projet: l.projet, nature, valeur: Math.round(valeur), cout: nature === "api" ? coutBrut : null, source });
   });
   return { ajouts, erreurs };
+}
+
+// Consommation API par jour sur les n derniers jours se terminant à finIso (AAAA-MM-JJ).
+export function parJour(usages, finIso, n = 7) {
+  const base = new Date(finIso + "T00:00:00Z");
+  const jours = [];
+  for (let i = n - 1; i >= 0; i--) {
+    const d = new Date(base);
+    d.setUTCDate(base.getUTCDate() - i);
+    jours.push(d.toISOString().slice(0, 10));
+  }
+  return jours.map((date) => ({
+    date,
+    tokens: somme(usages.filter((u) => u.nature === "api" && u.date === date), (u) => u.valeur),
+  }));
+}
+
+// Projection linéaire de fin de mois, uniquement pour le mois en cours. Estimation, à présenter comme telle.
+export function projeterMois(depense, mois, aujourdhuiIso) {
+  if (!aujourdhuiIso || aujourdhuiIso.slice(0, 7) !== mois) return null;
+  const jourCourant = Number(aujourdhuiIso.slice(8, 10));
+  const [a, m] = mois.split("-").map(Number);
+  const joursDuMois = new Date(Date.UTC(a, m, 0)).getUTCDate();
+  if (jourCourant < 1) return null;
+  return (depense / jourCourant) * joursDuMois;
 }

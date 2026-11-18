@@ -2,8 +2,8 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   etatInitial, normaliser, lireEtat, lireCsv, parseNombre, parseDate,
-  importerDepenses, importerUsages, resumeMois, alertes, agreger, moisPrecedents,
-} from "../public/depenses/logique.mjs";
+  importerDepenses, importerUsages, resumeMois, alertes, agreger, moisPrecedents, parJour, projeterMois,
+} from "../public/logique.mjs";
 
 function etatAvec({ budget = 0, depenses = [], usages = [], config = {} } = {}) {
   const e = etatInitial();
@@ -116,4 +116,19 @@ test("normalisation : les entrées invalides sont écartées", () => {
 
 test("mois précédents pour le graphique", () => {
   assert.deepEqual(moisPrecedents("2026-02", 3), ["2025-12", "2026-01", "2026-02"]);
+});
+
+test("consommation quotidienne : 7 jours, tokens API seulement", () => {
+  const usages = [use("2026-11-17", "Ana", 300), use("2026-11-18", "Ana", 50), use("2026-11-18", "Ana", 10, { nature: "abonnement" })];
+  const j = parJour(usages, "2026-11-18", 7);
+  assert.equal(j.length, 7);
+  assert.equal(j[0].date, "2026-11-12");
+  assert.equal(j[5].tokens, 300);
+  assert.equal(j[6].tokens, 50);
+});
+
+test("projection de fin de mois : seulement pour le mois en cours", () => {
+  assert.equal(projeterMois(10000, "2026-11", "2026-11-10"), 30000);
+  assert.equal(projeterMois(10000, "2026-10", "2026-11-10"), null);
+  assert.equal(projeterMois(0, "2026-11", "2026-11-01"), 0);
 });

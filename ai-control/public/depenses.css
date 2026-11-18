@@ -94,3 +94,11 @@ button.petit{min-height:34px;padding:4px 12px;font-size:13px}
   .vide{display:block;text-align:left;background:var(--carte);border-radius:12px;padding:14px}
   .vide::before{content:none}
 }
+/* AI CONTROL : vues par rôle et petits éléments partagés */
+[hidden]{display:none !important}
+.qui{font-size:13px;color:var(--gris);margin-top:6px}
+.conseils{margin:0;padding-left:20px;font-size:14.5px;color:var(--ink)}
+.conseils li{margin:6px 0}
+.suivi-ligne{display:grid;grid-template-columns:70px 1fr auto;gap:10px;align-items:center;font-size:14px;margin-top:8px}
+.suivi-ligne b{font-weight:600;color:var(--gris);font-variant-numeric:tabular-nums}
+input[readonly]{opacity:.7}
