@@ -151,3 +151,13 @@ test("forfait : la Direction enregistre et relit un relevé (mis à jour le mêm
   const dc = await appel(db, "collaborateur", ANA, "GET", "/donnees");
   assert.equal(dc.corps.forfait, undefined);
 });
+
+test("signal de limite atteinte : lu depuis la configuration pour la Direction, ignoré s'il est illisible", async () => {
+  const db = fausseBase();
+  assert.equal((await dir(db, "GET", "/donnees")).corps.limite_atteinte, null);
+  await db.prepare("INSERT INTO config (cle, valeur) VALUES ('limite_atteinte', ?)").bind(JSON.stringify({ date: "2026-11-18", taches: ["A"], message: "m" })).run();
+  assert.deepEqual((await dir(db, "GET", "/donnees")).corps.limite_atteinte, { date: "2026-11-18", taches: ["A"], message: "m" });
+  await db.prepare("UPDATE config SET valeur = 'pas du json' WHERE cle = 'limite_atteinte'").run();
+  assert.equal((await dir(db, "GET", "/donnees")).corps.limite_atteinte, null);
+  assert.equal((await appel(db, "collaborateur", ANA, "GET", "/donnees")).corps.limite_atteinte, undefined);
+});

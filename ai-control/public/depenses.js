@@ -10,6 +10,21 @@ const VUES = ["apercu", "projets", "conversations", "depenses", "alertes", "util
 const VUES_DIRECTION = ["depenses", "alertes"];
 const $ = (id) => document.getElementById(id);
 
+// Thème : clair par défaut, sombre au choix (mémorisé dans le navigateur si possible).
+function appliquerTheme(t) {
+  document.documentElement.dataset.theme = t;
+  $("b-theme").textContent = t === "dark" ? "Thème clair" : "Thème sombre";
+  $("b-theme").setAttribute("aria-pressed", String(t === "dark"));
+}
+let theme = "light";
+try { theme = localStorage.getItem("aic-theme") === "dark" ? "dark" : "light"; } catch { /* stockage indisponible */ }
+appliquerTheme(theme);
+$("b-theme").addEventListener("click", () => {
+  theme = theme === "dark" ? "light" : "dark";
+  appliquerTheme(theme);
+  try { localStorage.setItem("aic-theme", theme); } catch { /* stockage indisponible */ }
+});
+
 let etat = etatInitial();
 let role = null;
 let email = "";
@@ -79,7 +94,7 @@ async function charger() {
   }
   role = r.donnees.role;
   email = r.donnees.email;
-  etat = { config: r.donnees.config, depenses: r.donnees.depenses, usages: r.donnees.usages, forfait: r.donnees.forfait || [] };
+  etat = { config: r.donnees.config, depenses: r.donnees.depenses, usages: r.donnees.usages, forfait: r.donnees.forfait || [], limiteAtteinte: r.donnees.limite_atteinte || null };
   appliquerRole();
   rendre();
   return true;

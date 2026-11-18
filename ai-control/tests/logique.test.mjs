@@ -375,3 +375,18 @@ test("alertes du forfait : plafond de dépenses mensuel et limite hebdomadaire",
   assert.equal(alertes(e, "2026-11", "2026-11-18").filter((a) => a.categorie === "Forfait").length, 0);
   assert.equal(alertes(etatAvec(base), "2026-11", "2026-11-18").filter((a) => a.categorie === "Forfait").length, 0);
 });
+
+test("alerte automatique : des tâches planifiées arrêtées par une limite d'usage (relevé du soir)", () => {
+  const e = etatAvec({ budget: 1000, depenses: [dep("2026-11-05", 10)] });
+  const nb = () => alertes(e, "2026-11", "2026-11-18").filter((a) => a.categorie === "Forfait");
+  assert.equal(nb().length, 0);
+  e.limiteAtteinte = { date: "2026-11-18", taches: ["WhatsApp 16 h", "Monsieur K"], message: "monthly spend limit" };
+  assert.equal(nb().length, 1);
+  assert.equal(nb()[0].niveau, "critique");
+  assert.match(nb()[0].message, /2 tâche\(s\) planifiée\(s\) ont échoué \(WhatsApp 16 h ; Monsieur K\)/);
+  assert.match(nb()[0].message, /monthly spend limit/);
+  e.limiteAtteinte = { date: "2026-11-18", taches: [] };
+  assert.equal(nb().length, 0);
+  e.limiteAtteinte = { date: "2026-11-01", taches: ["X"] };
+  assert.equal(nb().length, 0);
+});

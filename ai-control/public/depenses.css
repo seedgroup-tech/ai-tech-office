@@ -1,6 +1,8 @@
-/* AI CONTROL (M-012) : tableau de bord sombre, sobre, lisible sur téléphone.
+/* AI CONTROL (M-012) : tableau de bord sobre, clair par défaut (thème sombre au choix), lisible sur téléphone.
    Pas de style en ligne (CSP) : les largeurs de barres sont posées par le script. */
-:root{color-scheme:dark;--bg:#0E1013;--carte:#161A1F;--ligne:#242A31;--ink:#E9ECEF;--fort:#F4F2EC;--gris:#8C95A1;
+:root{color-scheme:light;--bg:#F4F6F9;--carte:#FFFFFF;--ligne:#D9DEE5;--ink:#1B2430;--fort:#0B1526;--gris:#566274;
+--bleu:#1D4ED8;--attente:#B45309;--critique:#B91C1C;--ok:#15803D;--doux:#EEF2F7}
+:root[data-theme="dark"]{color-scheme:dark;--bg:#0E1013;--carte:#161A1F;--ligne:#242A31;--ink:#E9ECEF;--fort:#F4F2EC;--gris:#8C95A1;
 --bleu:#4F8CFF;--attente:#E0A030;--critique:#E5534B;--ok:#3FB68B;--doux:#1B2027}
 *{box-sizing:border-box;min-width:0}
 body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 Inter,Arial,sans-serif;overflow-x:clip}

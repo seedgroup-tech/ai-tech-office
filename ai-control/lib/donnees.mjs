@@ -119,7 +119,11 @@ export async function chargerDonnees(db, email, role) {
   if (role === ROLES.direction) {
     const usages = await db.prepare(`SELECT ${COLONNES_USAGE} FROM usages ORDER BY date`).all();
     const forfait = await db.prepare("SELECT date, session_pct, semaine_pct, claude_code, conversations, cowork, autre, depense, plafond FROM forfait ORDER BY date DESC LIMIT 60").all();
-    return { role, email, config, depenses: depenses.results, usages: usages.results, forfait: forfait.results };
+    // Signal automatique du relevé du soir : tâches planifiées arrêtées par une limite d'usage.
+    const la = await db.prepare("SELECT valeur FROM config WHERE cle = 'limite_atteinte'").first();
+    let limiteAtteinte = null;
+    try { limiteAtteinte = la ? JSON.parse(la.valeur) : null; } catch { limiteAtteinte = null; }
+    return { role, email, config, depenses: depenses.results, usages: usages.results, forfait: forfait.results, limite_atteinte: limiteAtteinte };
   }
   const usages = await db.prepare(`SELECT ${COLONNES_USAGE} FROM usages WHERE utilisateur = ? ORDER BY date`).bind(email).all();
   return { role, email, config: configCollaborateur(config), depenses: depenses.results, usages: usages.results };

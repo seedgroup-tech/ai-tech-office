@@ -289,6 +289,11 @@ export function alertes(etat, mois, aujourdhui = new Date().toISOString().slice(
     if (part >= 100) out.push({ niveau: "critique", categorie: "Forfait", message: `Plafond de dépenses mensuel du forfait atteint : ${formaterMontant(fo.depense, c.devise)} sur ${formaterMontant(fo.plafond, c.devise)} (relevé du ${fo.date}). Les tâches planifiées peuvent échouer tant que ce plafond n'est pas augmenté ou que le mois ne change pas.` });
     else if (part >= 80) out.push({ niveau: "attention", categorie: "Forfait", message: `${Math.round(part)} % du plafond de dépenses mensuel du forfait (${formaterMontant(fo.depense, c.devise)} sur ${formaterMontant(fo.plafond, c.devise)}, relevé du ${fo.date}).` });
   }
+  const la = etat.limiteAtteinte;
+  if (la && Array.isArray(la.taches) && la.taches.length && typeof la.date === "string" && la.date >= moinsJours(aujourdhui, 3)) {
+    const noms = la.taches.slice(0, 3).join(" ; ") + (la.taches.length > 3 ? "…" : "");
+    out.push({ niveau: "critique", categorie: "Forfait", message: `Limite d'usage atteinte : ${la.taches.length} tâche(s) planifiée(s) ont échoué (${noms}), constaté le ${la.date}.${la.message ? ` Message de la plateforme : « ${String(la.message).slice(0, 200)} ».` : ""}` });
+  }
   if (fo && fo.semaine_pct !== null && fo.semaine_pct >= 80) {
     out.push({ niveau: fo.semaine_pct >= 95 ? "critique" : "attention", categorie: "Forfait", message: `${Math.round(fo.semaine_pct)} % de la limite hebdomadaire du forfait utilisés (relevé du ${fo.date}).` });
   }
