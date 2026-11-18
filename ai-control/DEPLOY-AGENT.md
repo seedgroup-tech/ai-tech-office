@@ -6,25 +6,29 @@ Cette procédure est destinée à un agent chargé de mettre AI CONTROL en ligne
 
 | Variable (coffre de l'agent) | Contenu |
 |---|---|
-| `CLOUDFLARE_API_TOKEN` | jeton à droits limités (voir le guide du propriétaire) |
-| `CLOUDFLARE_ACCOUNT_ID` | identifiant du compte Cloudflare |
+| *(secret réseau, invisible)* | jeton Cloudflare, rangé par le propriétaire dans les « Secrets réseau » de l'environnement cloud pour l'hôte `api.cloudflare.com`. Le proxy l'ajoute à chaque requête vers cet hôte : l'agent ne le voit jamais et **n'écrit aucun en-tête `Authorization` lui-même**. |
+| `CLOUDFLARE_ACCOUNT_ID` | identifiant du compte Cloudflare (variable d'environnement, non secrète) |
 | `DIRECTION` | adresses Direction / Finance, séparées par des virgules |
 | `COLLABORATEURS` | adresses collaborateurs, séparées par des virgules |
 | `ACCESS_TEAM_DOMAIN`, `ACCESS_AUD` | valeurs de l'équipe Access |
-| `GITHUB_TOKEN` | jeton fin-grain sur `seedgroup-tech/ai-tech-office` (voir le guide du propriétaire) |
 
-Vérifier les jetons avant tout :
-- Cloudflare : `curl -s -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" https://api.cloudflare.com/client/v4/user/tokens/verify` → doit répondre `"status":"active"`.
-- GitHub : `curl -s -o /dev/null -w "%{http_code}" -H "Authorization: Bearer $GITHUB_TOKEN" https://api.github.com/repos/seedgroup-tech/ai-tech-office` → doit répondre `200`.
+GitHub : aucun jeton à fournir. L'accès au dépôt passe par la liaison GitHub de Claude Code.
 
-Si un jeton est refusé, expiré ou trop large : arrêter et signaler. Dates d'expiration à surveiller : un an après leur création (Cloudflare : 18 novembre 2027 ; GitHub : à noter lors de la création).
+Vérifier l'accès Cloudflare avant tout :
+- `curl -s https://api.cloudflare.com/client/v4/user/tokens/verify` (sans en-tête) → doit répondre `"status":"active"`.
+- Si la réponse est `Missing "Authorization" header`, la session ne tourne pas dans l'environnement qui porte le secret (ou a démarré avant son ajout) : arrêter et signaler, ne pas demander le jeton.
+- `echo $CLOUDFLARE_ACCOUNT_ID` doit afficher 32 caractères.
+
+Les commandes `wrangler` des sections suivantes supposent que wrangler accepte de s'authentifier par ce proxy, ce qui **n'a pas été vérifié**. Si wrangler réclame un jeton, faire les mêmes opérations par l'API Cloudflare (`https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/...` : `d1/database`, `pages/projects`, `access/apps`) avec `curl`, sans en-tête d'authentification.
+
+Si l'accès est refusé ou expiré : arrêter et signaler. Expiration du jeton Cloudflare : 18 novembre 2027.
 
 ## Garde-fous
 
 - **Ne jamais pousser ni fusionner dans `main`.** La protection de `main` (PR avec approbation, pas de force-push, pas de suppression) est fixée par le propriétaire ; ne pas la modifier.
 - **Sauvegarde avant toute migration** : `npx wrangler d1 export ai-control --remote --output=../sauvegarde-ai-control-AAAA-MM-JJ.sql`. Ce fichier reste **hors du dépôt**, il contient des données financières.
 - **Migration une seule fois** : avant la section 1 étape 2, lister les tables (étape 3). Si `depenses`, `usages` et `config` existent déjà, ne pas rejouer le fichier SQL.
-- **Rotation des jetons** : signaler au propriétaire quinze jours avant l'expiration ; ne jamais recréer un jeton soi-même.
+- **Rotation du jeton** : signaler au propriétaire quinze jours avant l'expiration ; ne jamais recréer un jeton soi-même.
 - **Aucun secret** dans les fichiers du dépôt, les messages de commit, les journaux ou les réponses.
 
 ## 1. Base D1
@@ -55,7 +59,7 @@ Créer une application *self-hosted* sur l'adresse du projet, avec une règle *I
 
 ## Points d'arrêt (ne pas contourner)
 
-- Un jeton refusé, expiré ou trop large : arrêter et signaler.
+- Accès Cloudflare refusé ou expiré : arrêter et signaler.
 - Une liste d'adresses incertaine ou différente entre les variables et Access : arrêter, c'est une décision du propriétaire.
 - Toute opération hors de cette procédure (fusion, changement de droits, création d'autres ressources) : demander l'accord du propriétaire.
 
