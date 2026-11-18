@@ -348,7 +348,7 @@ $("f-config").addEventListener("submit", async (e) => {
   };
   const corps = {
     budgetMensuel: num("budgetMensuel") ?? 0,
-    devise: f.elements.namedItem("devise").value.trim() || "FCFA",
+    devise: f.elements.namedItem("devise").value.trim() || "USD",
     seuilAlerte: num("seuilAlerte"),
     seuilCritique: num("seuilCritique"),
     ratioAnormal: num("ratioAnormal"),

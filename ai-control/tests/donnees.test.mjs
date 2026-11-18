@@ -54,7 +54,7 @@ test("collaborateur : ne lit que ses usages, ni limites ni auteurs des dépenses
   await dir(db, "POST", "/depenses", { lignes: [depense] });
   await dir(db, "POST", "/usages", { lignes: [{ ...usage, utilisateur: BEN }] });
   await ana(db, "POST", "/usages", { lignes: [{ ...usage, projet: "KLOQIn" }] });
-  await dir(db, "PUT", "/config", { budgetMensuel: 100000, devise: "FCFA", seuilAlerte: 80, seuilCritique: 100, ratioAnormal: 2, limiteUtilisateurTokens: 5000, limiteProjetTokens: 9000 });
+  await dir(db, "PUT", "/config", { budgetMensuel: 100000, devise: "USD", seuilAlerte: 80, seuilCritique: 100, ratioAnormal: 2, limiteUtilisateurTokens: 5000, limiteProjetTokens: 9000 });
   const r = (await ana(db, "GET", "/donnees")).corps;
   assert.equal(r.role, "collaborateur");
   assert.equal(r.usages.length, 1);

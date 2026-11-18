@@ -29,7 +29,7 @@ export function etatInitial() {
     version: 1,
     config: {
       budgetMensuel: 0,
-      devise: "FCFA",
+      devise: "USD",
       seuilAlerte: 80,
       seuilCritique: 100,
       ratioAnormal: 2,

@@ -52,7 +52,7 @@ export function preparerConfig(c) {
   const ratio = optNombre(c?.ratioAnormal);
   const limU = optNombre(c?.limiteUtilisateurTokens);
   const limP = optNombre(c?.limiteProjetTokens);
-  const devise = texte(c?.devise, 10) || "FCFA";
+  const devise = texte(c?.devise, 10) || "USD";
   if (budget < 0 || seuilAlerte === null || seuilAlerte < 1 || seuilAlerte > 100) return null;
   if (seuilCritique === null || seuilCritique < 1 || seuilCritique > 200) return null;
   if (ratio === null || ratio < 1) return null;

@@ -42,7 +42,7 @@ les onglets Dépenses et Alertes ; un test d'écriture de Direction depuis un co
 - Chaque ligne porte sa source : **réel**, **importé**, **saisi** ou **estimé**. Rien n'est récupéré automatiquement :
   aucune source officielle d'usage IA n'est connectée.
 - Les dépenses (abonnements, crédits) et les coûts d'usage API sont séparés ; les quotas d'abonnement ne sont pas des tokens.
-- La devise est unique (réglage Direction). Si les factures API sont en dollars, la régler en USD.
+- La devise est unique, USD par défaut, modifiable par la Direction dans les seuils.
 - Les données saisies dans l'ancien MVP (stockage du navigateur) ne sont pas reprises.
 
 ## Tests
